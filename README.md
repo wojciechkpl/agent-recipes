@@ -26,11 +26,13 @@ All three platforms share the same best practices and domain knowledge — only 
 │       ├── recipes/            # Goose execution configs
 │       └── tools/              # Docker infrastructure scripts
 │
-├── claude/                 # Claude Code agents (Markdown)
+├── claude/                 # Claude Code agents + workflows (Markdown) — also a loadable plugin
 │   ├── README.md               # Claude-specific documentation
 │   ├── CONVENTIONS.md          # Global rules for all Claude agents
+│   ├── .claude-plugin/         # plugin.json — load all agents + workflows in one command
+│   ├── commands/               # 7 workflow slash commands (/wf-*)
 │   └── agents/
-│       ├── *.md                # 8 core agents
+│       ├── *.md                # 10 core agents
 │       ├── languages/*.md      # 5 language experts
 │       ├── specialized/*.md    # 2 specialized agents
 │       └── subrecipes/*.md     # 6 shared subrecipes
@@ -62,8 +64,8 @@ cd ~/agent-recipes
 The setup script supports selective installation and previewing changes:
 
 ```bash
-./setup.sh --claude            # Claude agents only (user-level, all projects)
-./setup.sh --claude-project    # Claude agents for current project only (team-shareable)
+./setup.sh --claude            # Claude agents + /wf-* workflows (user-level, all projects)
+./setup.sh --claude-project    # Claude agents + workflows for current project only (team-shareable)
 ./setup.sh --goose             # Goose recipe path only
 ./setup.sh --all               # Both Claude + Goose
 ./setup.sh --dry-run --all     # Preview without making changes
@@ -93,7 +95,15 @@ See [goose/TUTORIAL.md](goose/TUTORIAL.md) for 15 detailed use-case walkthroughs
 
 ### Claude Code (Anthropic)
 
-Agents are installed automatically by `./setup.sh --claude`. For manual installation:
+`./setup.sh --claude` installs both the **agents** and the **`/wf-*` workflow commands**
+(user-level). Or load everything at once as a **plugin** — no copying, agents *and*
+workflows available immediately:
+
+```bash
+claude --plugin-dir /path/to/agent-recipes/claude
+```
+
+For manual installation of agents only:
 
 ```bash
 # Project-level (recommended for teams)
@@ -124,10 +134,12 @@ See [claude/README.md](claude/README.md) for full installation and usage details
 
 ## Agent Catalog
 
-### Core Agents (10)
+### Core Agents (12)
 | Agent | Goose | Claude | Purpose |
 |-------|-------|--------|---------|
 | Code Reviewer | `general/code-reviewer.yaml` | `agents/code-reviewer.md` | Correctness, security, performance, maintainability review |
+| Test Architect | — | `agents/test-architect.md` | TDD **RED** phase — writes failing tests as an independent test author |
+| Architect | — | `agents/architect.md` | System design docs + ordered implementation plans (no code) |
 | Debugger | `general/debugger.yaml` | `agents/debugger.md` | Scientific debugging: observe → hypothesize → test → fix |
 | Security Auditor | `general/security-auditor.yaml` | `agents/security-auditor.md` | OWASP Top 10, secret detection, CVE scanning, compliance |
 | Performance Optimizer | `general/performance-optimizer.yaml` | `agents/performance-optimizer.md` | Measure → analyze → optimize → validate (data-driven) |
@@ -169,6 +181,101 @@ A portable orchestration framework for complex multi-step workflows. See [goose/
 | **Missions** (9) | Step-by-step workflows: tactical updates, TDD, architecture, data exploration, ML research, docs, code review |
 | **Roles** (7) | Sub-agent identities: analyst, architect, developer, QA, doc writer, code reviewer, ML researcher |
 | **Tools** (6) | Docker-based infrastructure: test runner, dev container, data explorer |
+
+---
+
+## Workflows (Claude Code)
+
+Individual agents do one job. **Workflows** are `/wf-*` slash commands that orchestrate
+several agents into a multi-step pipeline with **gates** between phases — the agents
+hold the expertise, the workflow defines the hand-offs and the stop conditions. Think
+of an agent as a specialist and a workflow as the lead engineer who sequences them and
+refuses to move on until each step actually passes.
+
+> Workflows are currently **Claude Code only**. The canonical catalog is
+> [`shared/workflows.md`](shared/workflows.md).
+
+### Install & invoke
+
+```bash
+./setup.sh --claude                              # installs agents + /wf-* commands (user-level)
+# or load the whole bundle as a plugin:
+claude --plugin-dir /path/to/agent-recipes/claude
+```
+
+Then just type the command in Claude Code:
+
+```
+/wf-feature add a token-bucket rate limiter to the API client
+/wf-pre-pr
+/wf-bugfix median() returns the wrong value for even-length lists
+```
+
+### The 7 workflows
+
+| Command | What it does | Agents it orchestrates |
+|---------|--------------|------------------------|
+| `/wf-feature` | Build a feature via strict TDD | detect → `architect`/`api-designer` → `test-architect` (RED) → `{lang}-expert` (GREEN) → `code-reviewer` → `documentation-agent` |
+| `/wf-bugfix` | Fix a bug, regression-test first | `debugger` (writes failing test) → `{lang}-expert` (fix) → `code-reviewer` |
+| `/wf-pre-pr` | Pre-merge quality gate | `static-analysis` + `code-reviewer` + `security-auditor` + `dependency-auditor` (parallel) |
+| `/wf-api` | Contract-first API build | `api-designer` → `test-architect` → `{lang}-expert` → `code-reviewer` → `documentation-agent` |
+| `/wf-perf` | Measure-driven optimization | `performance-optimizer` (baseline) → `{lang}-expert` → re-measure → `code-reviewer` |
+| `/wf-new-project` | Scaffold + prove the harness + docs | `project-bootstrapper` → `test-architect` → `{lang}-expert` → `documentation-agent` |
+| `/wf-ml-research` | Research → reproducible setup | `ai-researcher` → `docker-ml-environment` → `mlflow-tracking` |
+
+### When to use a workflow vs. a single agent
+
+Use a **single agent** for a one-shot task (“review this file”, “explain this error”).
+Reach for a **workflow** when the task has multiple phases that must each be verified
+before the next — that’s where the gates earn their keep.
+
+| Your situation | Use |
+|----------------|-----|
+| “Add feature X” and you want tests-first with a review gate | `/wf-feature` |
+| Something is broken and you want a regression test to lock the fix | `/wf-bugfix` |
+| About to open a PR; want one consolidated 🔴/🟠 gate | `/wf-pre-pr` |
+| Building a new endpoint/service, contract-first | `/wf-api` |
+| A hot path is slow and you want a *measured* improvement (or a revert) | `/wf-perf` |
+| Starting a brand-new repo from nothing | `/wf-new-project` |
+| Going from an open ML question to a runnable, tracked experiment | `/wf-ml-research` |
+| Just one focused action (review / debug / refactor one thing) | the matching **agent**, no workflow |
+
+### Worked example: `/wf-feature`
+
+```
+/wf-feature add a chunk(items, size) helper that splits a list into fixed-size chunks
+```
+
+What the orchestrator actually does — and refuses to skip:
+
+1. **DETECT** — runs `language-detection`; finds Python + pytest, picks `python-expert`.
+2. **DESIGN** *(skipped for a small feature; used for multi-module work)*.
+3. **RED** — dispatches **`test-architect`** (a *different* agent from the implementer) to
+   write failing tests for the happy path, edge cases, and error conditions, then runs
+   the suite. **Gate:** the tests must fail *because the behavior is missing* — if the
+   runner errors for a toolchain reason, it stops and tells you instead of pretending.
+4. **GREEN** — dispatches **`python-expert`** to make the tests pass, forbidden from
+   editing any test file. Runs the suite. **Gate:** all green, or it loops with the
+   failure output.
+5. **REVIEW** — dispatches **`code-reviewer`**. **Gate:** a 🔴/🟠 verdict loops back to
+   GREEN; only an APPROVE proceeds.
+6. **DOCS** — dispatches `documentation-agent` for docstrings + a changelog entry.
+7. **REPORT** — shows the diff, the passing test output, and the review verdict.
+
+The result is a feature whose tests were written by one agent and implemented by
+another (genuine RED/GREEN separation), reviewed before it lands.
+
+### Why workflows are trustworthy: the gate pattern
+
+Every workflow is **evidence-gated** — it will not advance on a claim, only on a checked
+result:
+
+- `/wf-feature` & `/wf-api` won’t reach GREEN until the orchestrator has *seen* the tests
+  go red for the right reason, and won’t finish until it has *seen* them pass.
+- `/wf-pre-pr` returns **BLOCK** on any 🔴, and **BLOCK (inconclusive)** if any analyzer
+  failed to run — a broken scan never reads as a clean pass.
+- `/wf-perf` commits an improvement threshold *before* the change exists and **reverts**
+  if the re-measurement doesn’t beat it — correctness is never traded for speed.
 
 ---
 

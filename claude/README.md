@@ -6,6 +6,16 @@ Each agent is a Markdown file with YAML frontmatter that defines a focused subag
 
 ## Installation
 
+### Option 0: As a plugin (single portable unit — agents + workflows)
+The `claude/` directory is a self-contained Claude Code plugin (`claude/.claude-plugin/plugin.json`)
+that bundles all **23 agents** and **7 workflow commands**. Load it directly:
+```bash
+claude --plugin-dir /path/to/agent-recipes/claude
+```
+Everything (agents + `/wf-*` commands) is available with no copying. This is the
+recommended way to get the agents *and* the workflows together. The copy-based
+options below install agents only; use `setup.sh` to also install the workflow commands.
+
 ### Option 1: Project-Level (recommended for teams)
 ```bash
 # From your project root
@@ -63,6 +73,8 @@ claude agents
 | Agent | Model | Tools | Memory | Description |
 |-------|-------|-------|--------|-------------|
 | `code-reviewer` | Sonnet | Read-only | Project | Code review for quality, security, performance |
+| `test-architect` | Sonnet | All | Project | TDD RED phase — writes failing tests as an independent test author |
+| `architect` | Sonnet | All | Project | System design docs + ordered implementation plans (no code) |
 | `debugger` | Inherit | All | Project | Scientific debugging: observe → hypothesize → test → fix |
 | `security-auditor` | Sonnet | Read + Bash | Project | OWASP Top 10, secret detection, CVE scanning |
 | `performance-optimizer` | Inherit | All | Project | Measure → analyze → optimize → validate |
@@ -95,6 +107,23 @@ claude agents
 | `git-best-practices` | Conventional commits, branch naming, PR hygiene |
 | `docker-ml-environment` | Containerized ML infrastructure with GPU support |
 | `mlflow-tracking` | ML experiment tracking, model registry, HPO |
+
+## Workflows (slash commands)
+
+Multi-step **workflows** that orchestrate the agents above. Installed into
+`.claude/commands/` (project) or `~/.claude/commands/` (user) by `setup.sh`, then
+invoked as slash commands. Each is a thin sequencer — the agents hold the knowledge;
+the workflow defines the hand-offs and gates. Canonical catalog: `shared/workflows.md`.
+
+| Command | Purpose | Orchestrates |
+|---------|---------|--------------|
+| `/wf-feature` | Implement a feature via strict TDD | `language-detection` → `architect`/`api-designer` → `test-architect` (RED) → `{lang}-expert` (GREEN) → `code-reviewer` → `documentation-agent` |
+| `/wf-bugfix` | Fix a bug, regression-test first | `debugger` → `{lang}-expert` → `code-reviewer` |
+| `/wf-pre-pr` | Pre-merge gate (any 🔴 blocks) | `static-analysis` + `code-reviewer` + `security-auditor` + `dependency-auditor` |
+| `/wf-api` | Contract-first API build | `api-designer` → `test-architect` → `{lang}-expert` → `code-reviewer` → `documentation-agent` |
+| `/wf-perf` | Measure-driven optimization | `performance-optimizer` → `{lang}-expert` → `code-reviewer` |
+| `/wf-new-project` | Scaffold + TDD smoke + docs | `project-bootstrapper` → `test-architect` → `{lang}-expert` → `documentation-agent` |
+| `/wf-ml-research` | Research → reproducible setup | `ai-researcher` → `docker-ml-environment` → `mlflow-tracking` |
 
 ## Conventions
 

@@ -11,3 +11,7 @@ Thumbs.db
 # Goose runtime
 .goose/
 *.log
+
+# Workflow scratch state (e.g. .wf/api-contract.md) and smoke-test sandboxes
+.wf/
+.smoke-*/
