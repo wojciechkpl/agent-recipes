@@ -15,3 +15,6 @@ Thumbs.db
 # Workflow scratch state (e.g. .wf/api-contract.md) and smoke-test sandboxes
 .wf/
 .smoke-*/
+
+# Archive artifacts (e.g. manual zip snapshots of subtrees)
+*.zip
