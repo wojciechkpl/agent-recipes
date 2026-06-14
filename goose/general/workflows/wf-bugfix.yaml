@@ -1,0 +1,94 @@
+version: "1.0.0"
+title: "WF: Bug Fix (regression-test-first)"
+description: "Bug fix with a regression test first: reproduce -> red -> fix -> review. You are the orchestrator: you do NOT write the fix yourself, you dispatch specialists and own the gate between phases. A bug is not fixed until a test that was RED before is GREEN after."
+
+parameters:
+  - key: bug
+    input_type: string
+    requirement: required
+    description: "The bug description or failing symptom to reproduce and fix"
+
+instructions: |
+  You are the ORCHESTRATOR. You do NOT write the fix yourself — you dispatch the
+  specialists below and own the GATE between phases. A bug is not fixed until a test that
+  was RED before is GREEN after. The flow is REPRODUCE+RED -> GREEN -> REVIEW -> REPORT.
+
+  ## Bug: {{ bug }}
+
+  ## Sub-recipes you will dispatch
+  - `debugger` — reproduce the bug, isolate root cause, write a FAILING regression test
+    that captures it.
+  - a matching language expert (`python_expert`, `rust_expert`, `flutter_expert`,
+    `postgresql_expert`, `bash_expert`, `typescript_expert`) — apply the minimal fix. Run
+    the ONE that matches the detected stack.
+  - `code_reviewer` — verify the fix and check for regressions.
+
+  ## Steps (enforce every GATE faithfully)
+  1. **REPRODUCE + RED.** Dispatch `debugger` with: "Reproduce: {{ bug }}. Identify the
+     root cause via observe -> hypothesize -> test. Then write a regression test that
+     FAILS because of this bug. Do not fix the bug yet." Run the test command.
+     **GATE:** the regression test MUST fail, for the right reason — it reproduces the
+     bug. If the test command errors for a toolchain/setup reason (missing interpreter,
+     deps, virtualenv) rather than failing on the bug, STOP and report the raw error to
+     the user. Record the root cause the debugger identified.
+
+  2. **GREEN.** Dispatch the matching `{lang}_expert` with: "Apply the minimal fix for
+     this root cause: <cause>. Make the regression test pass. You may NOT edit the test."
+     Run the full test suite.
+     **GATE:** the regression test and the entire existing suite must pass. If anything
+     else breaks, dispatch again with the failure output.
+
+  3. **REVIEW.** Dispatch `code_reviewer` on the diff, focused on correctness and whether
+     the fix addresses the root cause rather than masking the symptom.
+     **GATE:** REQUEST CHANGES loops back to GREEN.
+
+  4. **REPORT.** Show the user: the root cause, the regression test (red -> green), the
+     fix diff, and the review verdict.
+
+  ## Asana sync (optional side-channel)
+  If an Asana project is configured (see the `asana_sync` sub-recipe), dispatch
+  `asana_sync`: `start` at step 1, a `comment` at the regression red -> green and at the
+  review, `done` (+ fix summary) at REPORT. Preflighted and graceful — a silent no-op if
+  Asana isn't configured or reachable; it never blocks the fix.
+
+prompt: "Fix this bug regression-test-first (reproduce -> red -> fix -> review): {{ bug }}"
+
+extensions:
+  - type: builtin
+    name: developer
+    description: "File system and shell access for running tests and dispatching sub-recipes"
+    timeout: 300
+    bundled: true
+
+sub_recipes:
+  - name: "debugger"
+    path: "../debugger.yaml"
+    description: "Reproduce the bug, isolate root cause, write a FAILING regression test (RED)"
+  - name: "python_expert"
+    path: "../languages/python-expert.yaml"
+    description: "GREEN: apply the minimal fix (run if stack is Python)"
+  - name: "typescript_expert"
+    path: "../languages/typescript-expert.yaml"
+    description: "GREEN: apply the minimal fix (run if stack is TS/JS)"
+  - name: "rust_expert"
+    path: "../languages/rust-expert.yaml"
+    description: "GREEN: apply the minimal fix (run if stack is Rust)"
+  - name: "flutter_expert"
+    path: "../languages/flutter-expert.yaml"
+    description: "GREEN: apply the minimal fix (run if stack is Dart/Flutter)"
+  - name: "postgresql_expert"
+    path: "../languages/postgresql-expert.yaml"
+    description: "GREEN: apply the minimal fix (run if stack is PostgreSQL/SQL)"
+  - name: "bash_expert"
+    path: "../languages/bash-expert.yaml"
+    description: "GREEN: apply the minimal fix (run if stack is Bash/shell)"
+  - name: "code_reviewer"
+    path: "../code-reviewer.yaml"
+    description: "REVIEW gate: verify the fix addresses the root cause and check for regressions"
+  - name: "asana_sync"
+    path: "../subrecipes/asana-sync.yaml"
+    description: "Optional, best-effort mirroring of run status to an Asana task"
+
+settings:
+  temperature: 0.1
+  max_turns: 50

@@ -1,0 +1,96 @@
+version: "1.0.0"
+title: "WF: Database Change"
+description: "Schema change with a safe migration: design (+rollback) → safety gate → test on scratch DB → review. A schema change can lock tables, lose data, or be impossible to undo — so it ships with a TESTED rollback and a locking-impact assessment, and is never applied to a real/production database without confirmation."
+
+parameters:
+  - key: migration
+    input_type: string
+    requirement: required
+    description: "The schema change to make, e.g. 'add index on orders(user_id)'"
+
+instructions: |
+  You are the ORCHESTRATOR. A schema change can lock tables, lose data, or be impossible
+  to undo — so it ships with a TESTED ROLLBACK and a locking-impact assessment, never
+  blindly. You dispatch the sub_recipes below and own the GATES. NEVER apply to a real or
+  production database without explicit confirmation.
+
+  ## Change: {{ migration }}
+
+  ## Sub-recipes you will dispatch
+  - `postgresql_expert` — design the forward + rollback migration and assess impact.
+  - `test_architect` — tests for the migration and any data-integrity invariants.
+  - a matching language expert (`python_expert`, `typescript_expert`, `rust_expert`,
+    `flutter_expert`, `bash_expert`) — application/ORM-side changes, if the schema change
+    requires them. Run the ONE that matches the project stack.
+  - `code_reviewer` — review migration + code together.
+
+  ## Steps (enforce every GATE faithfully)
+  1. **DESIGN.** Dispatch `postgresql_expert` to write the **forward migration AND a
+     matching rollback**, plus an impact note: locks taken, table size sensitivity,
+     downtime, and whether a backfill is needed. Persist to `.wf/db-change.md`.
+  2. **SAFETY GATE.** Review the impact.
+     **GATE:** on a large/hot table, a blocking `ALTER`/index build is NOT acceptable —
+     require an online/concurrent strategy (`CREATE INDEX CONCURRENTLY`,
+     add-nullable-then-backfill-then-constrain, etc.). A migration with no working
+     rollback also BLOCKS.
+  3. **TEST.** Apply the migration to a **scratch/throwaway database — prefer an ephemeral
+     container or a local disposable DB; NEVER a schema inside a shared or production
+     database**: run forward → assert the change → run rollback → assert the original
+     state. Dispatch `test_architect` for data-integrity tests if invariants are involved.
+     **GATE:** forward and rollback must BOTH succeed on the scratch DB. If the DB tooling
+     isn't available on this host, report that as a could-not-run — do not claim success.
+  4. **APP CHANGES (if needed).** Dispatch the matching `{lang}_expert` for ORM/model/query
+     updates, tested.
+  5. **REVIEW.** Dispatch `code_reviewer` on the migration + app diff.
+  6. **REPORT.** The migration + rollback, the impact assessment, the scratch-DB test
+     result, and the exact apply/rollback commands — plus any backfill/online steps the
+     user must run against production. **Do NOT apply to a real database without
+     confirmation.**
+
+  ## Asana sync (optional)
+  If an Asana project is configured, dispatch the `asana_sync` sub_recipe to reflect this
+  run on the relevant Asana task — typically `start`, a `comment` at each gate/finding,
+  and `done` (with links) on completion, or `blocked` if a gate stops it. Best-effort and
+  non-blocking: a silent no-op if Asana isn't configured or reachable.
+
+prompt: "Design and safely test the database change: {{ migration }}"
+
+extensions:
+  - type: builtin
+    name: developer
+    description: "File system access for migrations, scratch-DB testing, and dispatching sub-recipes"
+    timeout: 600
+    bundled: true
+
+sub_recipes:
+  - name: "postgresql_expert"
+    path: "../languages/postgresql-expert.yaml"
+    description: "Design forward + rollback migration and assess locking/downtime/backfill impact"
+  - name: "test_architect"
+    path: "../test-architect.yaml"
+    description: "Tests for the migration and any data-integrity invariants"
+  - name: "python_expert"
+    path: "../languages/python-expert.yaml"
+    description: "ORM/model/query updates (run if app stack is Python)"
+  - name: "typescript_expert"
+    path: "../languages/typescript-expert.yaml"
+    description: "ORM/model/query updates (run if app stack is TS/JS)"
+  - name: "rust_expert"
+    path: "../languages/rust-expert.yaml"
+    description: "ORM/model/query updates (run if app stack is Rust)"
+  - name: "flutter_expert"
+    path: "../languages/flutter-expert.yaml"
+    description: "Client/model updates (run if app stack is Dart/Flutter)"
+  - name: "bash_expert"
+    path: "../languages/bash-expert.yaml"
+    description: "Migration/runner scripting (run if scripting is needed)"
+  - name: "code_reviewer"
+    path: "../code-reviewer.yaml"
+    description: "Review the migration + application diff together"
+  - name: "asana_sync"
+    path: "../subrecipes/asana-sync.yaml"
+    description: "Optional, best-effort sync of run status to an Asana task"
+
+settings:
+  temperature: 0.1
+  max_turns: 60

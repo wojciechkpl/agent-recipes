@@ -154,8 +154,13 @@ Enable it with `.claude/asana.json` (or `ASANA_PROJECT_GID` / `ASANA_PROJECT_NAM
 { "project_name": "agent-recipes", "default_assignee": "me", "create_if_missing": true }
 ```
 
-A run then posts: task → **In Progress** at start, a **comment per gate** (RED / GREEN /
-REVIEW), and **Completed + PR link** at the end. Requires the Asana MCP server connected.
+**The model: the Asana project is your roadmap/board.** `/wf-spec` seeds it with one
+**task per prioritized MVP item** (in *To Do*). The execution workflows (`/wf-feature`,
+`/wf-bugfix`, …) then find that **same task by a stable key** and advance it
+**To Do → In Progress → Done** — a **comment per gate** (RED / GREEN / REVIEW) and the
+**PR link** on completion — so you get a real *planned-vs-done* view instead of a new
+task per run. Status uses a single-select **"Status"** custom field if the project has
+one, else sections. Requires the Asana MCP server connected.
 
 ## Conventions
 

@@ -1,0 +1,109 @@
+version: "1.0.0"
+title: "WF: New Project"
+description: "Scaffold a new project, prove the harness with a TDD smoke feature, then document. You are the orchestrator: you dispatch specialists and own the gate between phases. A scaffold is not done until its own test harness runs a real test green — an empty scaffold that has never executed a test is unproven."
+
+parameters:
+  - key: project
+    input_type: string
+    requirement: required
+    description: "The new project request: <project name> <language> [type: cli|api|library|...]"
+
+instructions: |
+  You are the ORCHESTRATOR. You dispatch specialists and own the GATE between phases. A
+  scaffold is not "done" until its own test harness runs a real test green — an empty
+  scaffold that has never executed a test is unproven. The flow is
+  SCAFFOLD -> VERIFY TOOLCHAIN -> SMOKE FEATURE (TDD) -> DOCS -> REPORT.
+
+  ## Request: {{ project }}
+
+  ## Sub-recipes you will dispatch
+  - `project_bootstrapper` — production-ready structure (src/tests layout, packaging,
+    linting, CI, Docker, pre-commit) for the language/type.
+  - `test_architect` — RED: a single failing smoke test that exercises the harness.
+  - a matching language expert (`python_expert`, `rust_expert`, `typescript_expert`,
+    `flutter_expert`, `postgresql_expert`, `bash_expert`) — GREEN: make the smoke test
+    pass. Run the ONE that matches the chosen stack.
+  - `documentation_agent` — README, quickstart, and a changelog seed.
+
+  ## Steps (enforce every GATE faithfully)
+  1. **SCAFFOLD.** Dispatch `project_bootstrapper` with the name, language, and type from
+     {{ project }}. It should produce the directory layout, dependency manifest with
+     **pinned** versions, linter/formatter config, test config, Dockerfile, and CI.
+     Instruct it to set up the **test harness and config only — do not implement a first
+     feature**; the first capability is added via TDD in step 3. (This avoids a
+     pre-existing passing feature colliding with the RED smoke test below.)
+     **GATE:** the scaffold must define a runnable test command. If the request is
+     ambiguous (language or type unclear), ask the user — do not guess the stack.
+
+  2. **VERIFY TOOLCHAIN.** Install/build and run the (possibly empty) test command
+     yourself.
+     **GATE:** the toolchain must be functional — deps resolve, the test runner starts. If
+     it errors, send the scaffold back to `project_bootstrapper` with the raw error; do
+     not proceed on a broken harness.
+
+  3. **SMOKE FEATURE (TDD).** Prove the harness end-to-end with one tiny real feature:
+     - RED: dispatch `test_architect` to write ONE failing smoke test for a trivial first
+       capability the scaffold does **not** yet implement (e.g. a version string, a health
+       check, a pure helper). If the bootstrapper left a passing entry-point feature, pick
+       a different, unimplemented capability so the test genuinely starts red. Run it;
+       confirm it fails for the right reason.
+     - GREEN: dispatch the `{lang}_expert` to implement it (tests off-limits). Run the
+       suite; confirm green.
+     **GATE:** red -> green proven. This is what certifies the scaffold actually works.
+
+  4. **DOCS.** Dispatch `documentation_agent` for a README (what it is, how to install,
+     how to run tests, how to build the Docker image) and a changelog seed.
+
+  5. **REPORT.** Show: the directory tree, the green smoke-test output, the test/build
+     commands, and any decisions the user should confirm (license, CI provider, etc.).
+
+  ## Asana sync (optional)
+  If an Asana project is configured, dispatch the `asana_sync` sub-recipe to reflect this
+  run on the relevant Asana task — typically `start`, a `comment` at each gate/finding,
+  and `done` (with links) on completion, or `blocked` if a gate stops it. Best-effort and
+  non-blocking: a silent no-op if Asana isn't configured or reachable.
+
+prompt: "Scaffold and prove a new project (scaffold -> verify -> TDD smoke -> docs): {{ project }}"
+
+extensions:
+  - type: builtin
+    name: developer
+    description: "File system and shell access for scaffolding, installing deps, running tests, and dispatching sub-recipes"
+    timeout: 300
+    bundled: true
+
+sub_recipes:
+  - name: "project_bootstrapper"
+    path: "../project-bootstrapper.yaml"
+    description: "SCAFFOLD: production-ready structure, pinned manifest, linting, CI, Docker, test harness (config only)"
+  - name: "test_architect"
+    path: "../test-architect.yaml"
+    description: "RED: one failing smoke test exercising the harness (the test AUTHOR)"
+  - name: "python_expert"
+    path: "../languages/python-expert.yaml"
+    description: "GREEN: implement the smoke capability (run if stack is Python)"
+  - name: "typescript_expert"
+    path: "../languages/typescript-expert.yaml"
+    description: "GREEN: implement the smoke capability (run if stack is TS/JS)"
+  - name: "rust_expert"
+    path: "../languages/rust-expert.yaml"
+    description: "GREEN: implement the smoke capability (run if stack is Rust)"
+  - name: "flutter_expert"
+    path: "../languages/flutter-expert.yaml"
+    description: "GREEN: implement the smoke capability (run if stack is Dart/Flutter)"
+  - name: "postgresql_expert"
+    path: "../languages/postgresql-expert.yaml"
+    description: "GREEN: implement the smoke capability (run if stack is PostgreSQL/SQL)"
+  - name: "bash_expert"
+    path: "../languages/bash-expert.yaml"
+    description: "GREEN: implement the smoke capability (run if stack is Bash/shell)"
+  - name: "documentation_agent"
+    path: "../documentation-agent.yaml"
+    description: "DOCS: README, quickstart, and changelog seed"
+  - name: "asana_sync"
+    path: "../subrecipes/asana-sync.yaml"
+    description: "Optional, best-effort mirroring of run status to an Asana task"
+
+settings:
+  temperature: 0.1
+  max_turns: 60

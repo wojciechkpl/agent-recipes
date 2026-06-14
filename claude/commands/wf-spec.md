@@ -38,8 +38,13 @@ rough idea into a prioritized PRD and a reviewable technical design + plan that
    open questions, and hand off: "run `/wf-feature` (or `/wf-api`) against
    `.wf/design.md` to build it."
 
-## Asana sync (optional side-channel)
+## Asana sync (optional side-channel) — seed the roadmap
 If an Asana project is configured (see the `asana-sync` subrecipe), after the PRD
-(step 2) dispatch `asana-sync` to create/update a task — or an epic with the prioritized
-MVP items as sub-tasks — so the spec lands on the board. Preflighted and graceful — a
-silent no-op if Asana isn't configured or reachable.
+(step 2) dispatch `asana-sync` to **seed the project as the roadmap/board**:
+find-or-create the project, then create **one task per prioritized MVP item** in the
+**To Do** section (Later-list items go to a separate "Backlog" section or are omitted).
+Each task carries its **acceptance criteria** in the description and a **stable
+`task_key`** (feature slug) so the execution workflows (`/wf-feature`, `/wf-bugfix`, …)
+later find-and-advance the *same* task (To Do → In Progress → Done) instead of creating
+duplicates. Preflighted and graceful — a silent no-op if Asana isn't configured or
+reachable.
