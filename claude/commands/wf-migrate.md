@@ -41,3 +41,9 @@ the gates.
    incorrect sites.
 6. **REPORT.** Sites transformed vs. **deferred/skipped (with reasons)** — never let a
    bounded migration read as complete when it isn't. Include the final green test run.
+
+## Asana sync (optional)
+If an Asana project is configured, dispatch the `asana-sync` subrecipe to reflect this
+run on the relevant Asana task — typically `start`, a `comment` at each gate/finding, and
+`done` (with links) on completion, or `blocked` if a gate stops it. Best-effort and
+non-blocking: a silent no-op if Asana isn't configured or reachable.

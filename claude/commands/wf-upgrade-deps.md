@@ -37,3 +37,9 @@ edit code yourself; you dispatch specialists and own the gates.
 4. **REPORT.** A table: each dep → old→new version, kept/deferred, and why. List the
    security 🔴s this cleared and any deferred breaking upgrades that need follow-up.
    Never report "upgraded" for a dep whose suite you did not see go green.
+
+## Asana sync (optional)
+If an Asana project is configured, dispatch the `asana-sync` subrecipe to reflect this
+run on the relevant Asana task — typically `start`, a `comment` at each gate/finding, and
+`done` (with links) on completion, or `blocked` if a gate stops it. Best-effort and
+non-blocking: a silent no-op if Asana isn't configured or reachable.

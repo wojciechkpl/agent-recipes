@@ -33,3 +33,9 @@ question. This is **read-only** except for the documentation it produces.
    component map, a data-flow diagram (Mermaid), and "where to start" pointers.
 5. **REPORT.** Summarize the mental model, answer the question if one was asked, and
    link the produced doc. Flag what remains uncertain or unverified.
+
+## Asana sync (optional)
+If an Asana project is configured, dispatch the `asana-sync` subrecipe to reflect this
+run on the relevant Asana task — typically `start`, a `comment` at each gate/finding, and
+`done` (with links) on completion, or `blocked` if a gate stops it. Best-effort and
+non-blocking: a silent no-op if Asana isn't configured or reachable.

@@ -58,3 +58,9 @@ a concrete approach to test.
 4. **REPORT.** Show: the recommended approach and why, the env build + import check,
    the tracking sanity run, and the exact commands to launch a real experiment.
    State honestly what is scaffolded vs. what still needs real data/compute.
+
+## Asana sync (optional)
+If an Asana project is configured, dispatch the `asana-sync` subrecipe to reflect this
+run on the relevant Asana task — typically `start`, a `comment` at each gate/finding, and
+`done` (with links) on completion, or `blocked` if a gate stops it. Best-effort and
+non-blocking: a silent no-op if Asana isn't configured or reachable.

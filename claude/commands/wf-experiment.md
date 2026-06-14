@@ -40,3 +40,9 @@ chosen approach first, run `/wf-ml-research`; this workflow tests a *named* hypo
 6. **REPORT.** Hypothesis, setup (data/seed/env), baseline vs. variant metrics with
    delta, and the verdict — **including a negative result, stated honestly**. Note
    host limits (e.g. no GPU) if they capped the run.
+
+## Asana sync (optional)
+If an Asana project is configured, dispatch the `asana-sync` subrecipe to reflect this
+run on the relevant Asana task — typically `start`, a `comment` at each gate/finding, and
+`done` (with links) on completion, or `blocked` if a gate stops it. Best-effort and
+non-blocking: a silent no-op if Asana isn't configured or reachable.

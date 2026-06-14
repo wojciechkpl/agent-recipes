@@ -45,6 +45,7 @@ check "analyst installed"        exists .claude/agents/analyst.md
 check "data-engineer installed"  exists .claude/agents/data-engineer.md
 check "sre installed"            exists .claude/agents/sre.md
 check "typescript-expert installed" exists .claude/agents/languages/typescript-expert.md
+check "asana-sync installed"     exists .claude/agents/subrecipes/asana-sync.md
 
 # The glob must install EVERY wf-*.md from source (guards new commands like
 # wf-pre-pr / wf-api / wf-perf added without touching setup.sh).

@@ -57,3 +57,9 @@ against.
 
 6. **REPORT.** Show: the contract summary, passing test output, the review verdict,
    and any intentional contract changes made during implementation.
+
+## Asana sync (optional)
+If an Asana project is configured, dispatch the `asana-sync` subrecipe to reflect this
+run on the relevant Asana task — typically `start`, a `comment` at each gate/finding, and
+`done` (with links) on completion, or `blocked` if a gate stops it. Best-effort and
+non-blocking: a silent no-op if Asana isn't configured or reachable.

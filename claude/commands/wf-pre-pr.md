@@ -50,3 +50,9 @@ expert). Keep this run non-destructive: no file edits.
    - If BLOCK, the minimal set of 🔴 items that must be resolved, and a suggested
      next step (`/wf-bugfix` for a defect, the matching language expert for a fix).
    Do not claim PASS if any analyzer failed to run — report the failure instead.
+
+## Asana sync (optional)
+If an Asana project is configured, dispatch the `asana-sync` subrecipe to reflect this
+run on the relevant Asana task — typically `start`, a `comment` at each gate/finding, and
+`done` (with links) on completion, or `blocked` if a gate stops it. Best-effort and
+non-blocking: a silent no-op if Asana isn't configured or reachable.

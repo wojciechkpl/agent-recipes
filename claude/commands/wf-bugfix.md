@@ -41,3 +41,9 @@ not fixed until a test that was RED before is GREEN after.
 
 4. **REPORT.** Show the user: the root cause, the regression test (red→green), the
    fix diff, and the review verdict.
+
+## Asana sync (optional side-channel)
+If an Asana project is configured (see the `asana-sync` subrecipe), dispatch `asana-sync`:
+`start` at step 1, a `comment` at the regression red→green and at the review, `done`
+(+ fix summary) at REPORT. Preflighted and graceful — a silent no-op if Asana isn't
+configured or reachable; it never blocks the fix.
