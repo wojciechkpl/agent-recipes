@@ -142,8 +142,8 @@ the workflow defines the hand-offs and gates. Canonical catalog: `shared/workflo
 
 ### Asana sync (optional)
 
-`/wf-feature`, `/wf-bugfix`, and `/wf-spec` can mirror a run to an Asana task via the
-`asana-sync` subrecipe — a **best-effort side-channel that never blocks the run**. It
+Every `/wf-*` workflow can mirror its run to an Asana task via the `asana-sync`
+subrecipe — a **best-effort side-channel that never blocks the run**. It
 preflights availability, **finds-or-creates the target project** (by GID or name, never
 duplicating), and **resolves the assignee**; if Asana isn't configured or is unreachable
 it's a silent no-op (updates queued locally, nothing lost).

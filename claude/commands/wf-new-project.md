@@ -52,3 +52,9 @@ real test green — an empty scaffold that has never executed a test is unproven
 
 5. **REPORT.** Show: the directory tree, the green smoke-test output, the test/build
    commands, and any decisions the user should confirm (license, CI provider, etc.).
+
+## Asana sync (optional)
+If an Asana project is configured, dispatch the `asana-sync` subrecipe to reflect this
+run on the relevant Asana task — typically `start`, a `comment` at each gate/finding, and
+`done` (with links) on completion, or `blocked` if a gate stops it. Best-effort and
+non-blocking: a silent no-op if Asana isn't configured or reachable.

@@ -40,3 +40,9 @@ only safe behind a green test suite that exists *before* the change and stays gr
    loops back to REFACTOR (max 3 rounds, then surface to the user).
 6. **REPORT.** Show the diff, before/after test results (both green), and the review
    verdict.
+
+## Asana sync (optional)
+If an Asana project is configured, dispatch the `asana-sync` subrecipe to reflect this
+run on the relevant Asana task — typically `start`, a `comment` at each gate/finding, and
+`done` (with links) on completion, or `blocked` if a gate stops it. Best-effort and
+non-blocking: a silent no-op if Asana isn't configured or reachable.

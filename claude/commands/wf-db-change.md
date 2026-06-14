@@ -40,3 +40,9 @@ assessment, never blindly. You dispatch specialists and own the gates.
 6. **REPORT.** The migration + rollback, the impact assessment, the scratch-DB test
    result, and the exact apply/rollback commands — plus any backfill/online steps the
    user must run against production. Do not apply to a real database without confirmation.
+
+## Asana sync (optional)
+If an Asana project is configured, dispatch the `asana-sync` subrecipe to reflect this
+run on the relevant Asana task — typically `start`, a `comment` at each gate/finding, and
+`done` (with links) on completion, or `blocked` if a gate stops it. Best-effort and
+non-blocking: a silent no-op if Asana isn't configured or reachable.
