@@ -30,9 +30,9 @@ A curated collection of AI agent configurations, **built first for [Claude Code]
 │   ├── README.md               # Goose-specific documentation
 │   ├── TUTORIAL.md             # Step-by-step Goose usage guide
 │   ├── general/
-│   │   ├── *.yaml              # 10 core recipes
-│   │   ├── languages/*.yaml    # 5 language experts
-│   │   └── subrecipes/*.yaml   # 10 shared subrecipes
+│   │   ├── *.yaml              # 17 core recipes
+│   │   ├── languages/*.yaml    # 6 language experts
+│   │   └── subrecipes/*.yaml   # 11 shared subrecipes
 │   └── coding_agent_context/   # Portable orchestration framework
 │       ├── missions/           # Step-by-step workflow instructions
 │       ├── roles/              # Sub-agent identity definitions
@@ -43,10 +43,10 @@ A curated collection of AI agent configurations, **built first for [Claude Code]
 │   ├── README.md               # Kiro-specific documentation
 │   ├── setup-kiro.sh           # Installation script
 │   └── agents/
-│       ├── *.json              # 8 core agents
-│       ├── languages/*.json    # 5 language experts
+│       ├── *.json              # 15 core agents
+│       ├── languages/*.json    # 6 language experts
 │       ├── specialized/*.json  # 2 specialized agents
-│       └── subrecipes/*.json   # 6 shared subrecipes
+│       └── subrecipes/*.json   # 7 shared subrecipes
 │
 └── README.md               # This file
 ```
@@ -148,8 +148,8 @@ See [goose/TUTORIAL.md](goose/TUTORIAL.md) for 15 detailed use-case walkthroughs
 | Agent | Goose | Claude | Purpose |
 |-------|-------|--------|---------|
 | Code Reviewer | `general/code-reviewer.yaml` | `agents/code-reviewer.md` | Correctness, security, performance, maintainability review |
-| Test Architect | — | `agents/test-architect.md` | TDD **RED** phase — writes failing tests as an independent test author |
-| Architect | — | `agents/architect.md` | System design docs + ordered implementation plans (no code) |
+| Test Architect | `general/test-architect.yaml` | `agents/test-architect.md` | TDD **RED** phase — writes failing tests as an independent test author |
+| Architect | `general/architect.yaml` | `agents/architect.md` | System design docs + ordered implementation plans (no code) |
 | Debugger | `general/debugger.yaml` | `agents/debugger.md` | Scientific debugging: observe → hypothesize → test → fix |
 | Security Auditor | `general/security-auditor.yaml` | `agents/security-auditor.md` | OWASP Top 10, secret detection, CVE scanning, compliance |
 | Performance Optimizer | `general/performance-optimizer.yaml` | `agents/performance-optimizer.md` | Measure → analyze → optimize → validate (data-driven) |
@@ -159,11 +159,11 @@ See [goose/TUTORIAL.md](goose/TUTORIAL.md) for 15 detailed use-case walkthroughs
 | Project Bootstrapper | `general/project-bootstrapper.yaml` | `agents/project-bootstrapper.md` | Scaffold projects with TDD, CI/CD, Docker, linting |
 | AI/ML Researcher | `general/ai-researcher.yaml` | `agents/specialized/ai-researcher.md` | Literature review, ML design, math formulation, MLflow |
 | UX Designer | `general/ux-designer.yaml` | `agents/specialized/ux-designer.md` | Journey mapping, wireframes, design systems, WCAG 2.2 |
-| Product Manager | — | `agents/product-manager.md` | PRDs, user stories, acceptance criteria, prioritization (RICE/MoSCoW), success metrics |
-| Analyst | — | `agents/analyst.md` | Read-only codebase investigator — structure, data flow, risks |
-| Data Engineer | — | `agents/data-engineer.md` | Data transforms/pipelines, Polars/Rust-first, schema validation |
-| SRE / DevOps | — | `agents/sre.md` | CI/CD, Dockerfiles, IaC, observability, deployment |
-| Technical Writer | — | `agents/technical-writer.md` | Long-form writing — blogs, RFCs, tutorials, paper drafts |
+| Product Manager | `general/product-manager.yaml` | `agents/product-manager.md` | PRDs, user stories, acceptance criteria, prioritization (RICE/MoSCoW), success metrics |
+| Analyst | `general/analyst.yaml` | `agents/analyst.md` | Read-only codebase investigator — structure, data flow, risks |
+| Data Engineer | `general/data-engineer.yaml` | `agents/data-engineer.md` | Data transforms/pipelines, Polars/Rust-first, schema validation |
+| SRE / DevOps | `general/sre.yaml` | `agents/sre.md` | CI/CD, Dockerfiles, IaC, observability, deployment |
+| Technical Writer | `general/technical-writer.yaml` | `agents/technical-writer.md` | Long-form writing — blogs, RFCs, tutorials, paper drafts |
 
 ### Language Experts (6)
 | Agent | Goose | Claude | Focus |
@@ -173,7 +173,7 @@ See [goose/TUTORIAL.md](goose/TUTORIAL.md) for 15 detailed use-case walkthroughs
 | Rust Expert | `languages/rust-expert.yaml` | `languages/rust-expert.md` | Ownership/lifetimes, tokio async, thiserror/anyhow, proptest |
 | PostgreSQL Expert | `languages/postgresql-expert.yaml` | `languages/postgresql-expert.md` | Schema design, keyset pagination, RLS, BRIN indexes |
 | Bash Expert | `languages/bash-expert.yaml` | `languages/bash-expert.md` | Defensive scripting, CI/CD pipelines, bats-core testing |
-| TypeScript Expert | — | `languages/typescript-expert.md` | Strict TypeScript, React/Node, ESLint/Prettier, vitest/jest |
+| TypeScript Expert | `languages/typescript-expert.yaml` | `languages/typescript-expert.md` | Strict TypeScript, React/Node, ESLint/Prettier, vitest/jest |
 
 ### Subrecipes / Shared Workflows
 | Subrecipe | Goose | Claude | Purpose |
@@ -188,7 +188,7 @@ See [goose/TUTORIAL.md](goose/TUTORIAL.md) for 15 detailed use-case walkthroughs
 | Citation Graph | `subrecipes/citation-graph.yaml` | — | Semantic Scholar citation analysis |
 | Literature Review | `subrecipes/literature-review.yaml` | — | PRISMA-inspired systematic review |
 | Design System | `subrecipes/design-system.yaml` | — | Design tokens, component specs |
-| Asana Sync | — | `agents/subrecipes/asana-sync.md` | Best-effort Asana task sync — preflight, find-or-create project, resolve assignee, graceful degradation |
+| Asana Sync | `subrecipes/asana-sync.yaml` | `agents/subrecipes/asana-sync.md` | Best-effort Asana task sync — preflight, find-or-create project, resolve assignee, graceful degradation |
 
 ### Goose-Only: Coding Agent Context
 A portable orchestration framework for complex multi-step workflows. See [goose/coding_agent_context/](goose/coding_agent_context/).
