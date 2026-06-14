@@ -327,6 +327,42 @@ result:
 - `/wf-perf` commits an improvement threshold *before* the change exists and **reverts**
   if the re-measurement doesn’t beat it — correctness is never traded for speed.
 
+### Examples
+
+**Real invocations** — type the command; the workflow runs the named agents through their gates:
+
+```bash
+/wf-feature add a POST /users/{id}/avatar upload endpoint
+/wf-bugfix login 500s when the email has a trailing space
+/wf-refactor extract the retry logic in api/client.py into a decorator
+/wf-perf the dashboard query that takes ~3s
+/wf-upgrade-deps requests            # one bump at a time; reverts any that breaks tests
+/wf-pre-pr                           # consolidated 🔴/🟠 gate before you open the PR
+/wf-understand what does the billing module do and where do I start?
+/wf-spec a referral program for the app
+/wf-db-change add a partial index on orders(user_id) where status = 'open'
+/wf-ml-research best lightweight reranker for our search
+/wf-experiment does adding BM25 features beat the embedding-only baseline?
+```
+
+**End-to-end: concept → shipped** — workflows compose, handing off through `.wf/` files:
+
+```bash
+/wf-spec     dark-mode toggle in settings   # → .wf/prd.md + .wf/design.md (seeds the Asana backlog)
+/wf-feature  implement dark mode            # reads .wf/design.md; TDD build → review → docs
+/wf-pre-pr                                   # static-analysis + review + security + deps gate
+/wf-release  minor                           # changelog + version bump + tag (asks before pushing)
+```
+
+**Turn on Asana** — drop a `.claude/asana.json` in the repo and every run reflects to your board
+(find-or-create the task by key, move **To Do → In Progress → Done**, a comment per gate, PR link on done):
+
+```json
+{ "project_name": "my-app", "default_assignee": "me", "create_if_missing": true }
+```
+
+> Prefer one focused action? Skip the workflow and call the agent: `@agent-code-reviewer review src/auth`.
+
 ---
 
 ## Tutorial
