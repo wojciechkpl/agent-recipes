@@ -113,7 +113,7 @@ claude agents
 | `git-best-practices` | Conventional commits, branch naming, PR hygiene |
 | `docker-ml-environment` | Containerized ML infrastructure with GPU support |
 | `mlflow-tracking` | ML experiment tracking, model registry, HPO |
-| `asana-sync` | Best-effort Asana task sync for workflows (preflight + graceful degradation) |
+| `asana-sync` | Best-effort Asana task sync — preflight, find-or-create project, resolve assignee, graceful degradation |
 
 ## Workflows (slash commands)
 
@@ -139,6 +139,23 @@ the workflow defines the hand-offs and gates. Canonical catalog: `shared/workflo
 | `/wf-release` | Cut a release (gated) | `security-auditor` + `dependency-auditor` → `documentation-agent` → `sre` |
 | `/wf-migrate` | Large-scale codemod | `analyst` → `{lang}-expert` (worktree isolation) → `code-reviewer` |
 | `/wf-db-change` | Schema change with safe migration | `postgresql-expert` → `test-architect` → `code-reviewer` |
+
+### Asana sync (optional)
+
+`/wf-feature`, `/wf-bugfix`, and `/wf-spec` can mirror a run to an Asana task via the
+`asana-sync` subrecipe — a **best-effort side-channel that never blocks the run**. It
+preflights availability, **finds-or-creates the target project** (by GID or name, never
+duplicating), and **resolves the assignee**; if Asana isn't configured or is unreachable
+it's a silent no-op (updates queued locally, nothing lost).
+
+Enable it with `.claude/asana.json` (or `ASANA_PROJECT_GID` / `ASANA_PROJECT_NAME` env):
+
+```json
+{ "project_name": "agent-recipes", "default_assignee": "me", "create_if_missing": true }
+```
+
+A run then posts: task → **In Progress** at start, a **comment per gate** (RED / GREEN /
+REVIEW), and **Completed + PR link** at the end. Requires the Asana MCP server connected.
 
 ## Conventions
 

@@ -188,7 +188,7 @@ See [goose/TUTORIAL.md](goose/TUTORIAL.md) for 15 detailed use-case walkthroughs
 | Citation Graph | `subrecipes/citation-graph.yaml` | — | Semantic Scholar citation analysis |
 | Literature Review | `subrecipes/literature-review.yaml` | — | PRISMA-inspired systematic review |
 | Design System | `subrecipes/design-system.yaml` | — | Design tokens, component specs |
-| Asana Sync | — | `agents/subrecipes/asana-sync.md` | Best-effort Asana task sync for workflows (preflight + graceful degradation) |
+| Asana Sync | — | `agents/subrecipes/asana-sync.md` | Best-effort Asana task sync — preflight, find-or-create project, resolve assignee, graceful degradation |
 
 ### Goose-Only: Coding Agent Context
 A portable orchestration framework for complex multi-step workflows. See [goose/coding_agent_context/](goose/coding_agent_context/).
