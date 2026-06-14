@@ -8,7 +8,7 @@ Each agent is a Markdown file with YAML frontmatter that defines a focused subag
 
 ### Option 0: As a plugin (single portable unit — agents + workflows)
 The `claude/` directory is a self-contained Claude Code plugin (`claude/.claude-plugin/plugin.json`)
-that bundles all **29 agents** and **15 workflow commands**. Load it directly:
+that bundles all **30 agents** and **15 workflow commands**. Load it directly:
 ```bash
 claude --plugin-dir /path/to/agent-recipes/claude
 ```
@@ -113,6 +113,7 @@ claude agents
 | `git-best-practices` | Conventional commits, branch naming, PR hygiene |
 | `docker-ml-environment` | Containerized ML infrastructure with GPU support |
 | `mlflow-tracking` | ML experiment tracking, model registry, HPO |
+| `asana-sync` | Best-effort Asana task sync for workflows (preflight + graceful degradation) |
 
 ## Workflows (slash commands)
 

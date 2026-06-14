@@ -37,3 +37,9 @@ rough idea into a prioritized PRD and a reviewable technical design + plan that
 5. **REPORT.** Summarize the PRD (incl. MVP scope + metrics) and the chosen design, list
    open questions, and hand off: "run `/wf-feature` (or `/wf-api`) against
    `.wf/design.md` to build it."
+
+## Asana sync (optional side-channel)
+If an Asana project is configured (see the `asana-sync` subrecipe), after the PRD
+(step 2) dispatch `asana-sync` to create/update a task — or an epic with the prioritized
+MVP items as sub-tasks — so the spec lands on the board. Preflighted and graceful — a
+silent no-op if Asana isn't configured or reachable.

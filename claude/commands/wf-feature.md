@@ -64,3 +64,10 @@ time, and you own the gate between phases. Stop and report if any gate fails.
 
 7. **REPORT.** Show the user: the final diff summary, the passing test output, and
    the code-reviewer verdict. State plainly whether every gate passed.
+
+## Asana sync (optional side-channel)
+If an Asana project is configured (see the `asana-sync` subrecipe), dispatch `asana-sync`
+to mirror this run: `start` (task → In Progress) at step 1, a `comment` after each gate
+(RED / GREEN / REVIEW), and `done` (+ PR link) at REPORT. It preflights availability and
+**degrades gracefully** — if Asana isn't configured or is unreachable it's a silent no-op
+and the run is unaffected. An Asana error must never fail the build.

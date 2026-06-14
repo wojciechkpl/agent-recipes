@@ -52,6 +52,9 @@ These agents back the workflows above:
 - **`sre`** — CI/CD, containers, IaC, deployment (powers `wf-release`).
 - **`technical-writer`** — long-form writing (blogs, RFCs, papers); complements `documentation-agent`.
 - **`typescript-expert`** — a `{lang}-expert` for TypeScript/JS (web/Node).
+- **`asana-sync`** (subrecipe) — best-effort Asana task sync; optional side-channel in
+  `wf-feature`, `wf-bugfix`, `wf-spec`. Preflights availability; silent no-op if Asana
+  isn't configured/reachable (resolve project via caller / `ASANA_PROJECT_GID` / `.claude/asana.json`).
 
 ## TDD agent-separation note
 

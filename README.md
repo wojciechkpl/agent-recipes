@@ -24,7 +24,7 @@ A curated collection of AI agent configurations, **built first for [Claude Code]
 │       ├── *.md                # 15 core agents
 │       ├── languages/*.md      # 6 language experts
 │       ├── specialized/*.md    # 2 specialized agents
-│       └── subrecipes/*.md     # 6 shared subrecipes
+│       └── subrecipes/*.md     # 7 shared subrecipes
 │
 ├── goose/                  # Goose agent recipes (YAML)
 │   ├── README.md               # Goose-specific documentation
@@ -188,6 +188,7 @@ See [goose/TUTORIAL.md](goose/TUTORIAL.md) for 15 detailed use-case walkthroughs
 | Citation Graph | `subrecipes/citation-graph.yaml` | — | Semantic Scholar citation analysis |
 | Literature Review | `subrecipes/literature-review.yaml` | — | PRISMA-inspired systematic review |
 | Design System | `subrecipes/design-system.yaml` | — | Design tokens, component specs |
+| Asana Sync | — | `agents/subrecipes/asana-sync.md` | Best-effort Asana task sync for workflows (preflight + graceful degradation) |
 
 ### Goose-Only: Coding Agent Context
 A portable orchestration framework for complex multi-step workflows. See [goose/coding_agent_context/](goose/coding_agent_context/).
