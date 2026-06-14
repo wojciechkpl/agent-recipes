@@ -32,7 +32,8 @@ A curated collection of AI agent configurations, **built first for [Claude Code]
 │   ├── general/
 │   │   ├── *.yaml              # 17 core recipes
 │   │   ├── languages/*.yaml    # 6 language experts
-│   │   └── subrecipes/*.yaml   # 11 shared subrecipes
+│   │   ├── subrecipes/*.yaml   # 11 shared subrecipes
+│   │   └── workflows/*.yaml    # 15 workflow recipes (Goose renderings of /wf-*)
 │   └── coding_agent_context/   # Portable orchestration framework
 │       ├── missions/           # Step-by-step workflow instructions
 │       ├── roles/              # Sub-agent identity definitions
@@ -209,8 +210,10 @@ hold the expertise, the workflow defines the hand-offs and the stop conditions. 
 of an agent as a specialist and a workflow as the lead engineer who sequences them and
 refuses to move on until each step actually passes.
 
-> Workflows are currently **Claude Code only**. The canonical catalog is
-> [`shared/workflows.md`](shared/workflows.md).
+> Workflows are **first-class on Claude Code** (the `/wf-*` slash commands below).
+> Goose has recipe renderings of all 15 under `goose/general/workflows/` (run with
+> `goose run --recipe goose/general/workflows/wf-feature.yaml`); **Kiro has no workflow
+> primitive** (agents only). Canonical catalog: [`shared/workflows.md`](shared/workflows.md).
 
 ### Install & invoke
 

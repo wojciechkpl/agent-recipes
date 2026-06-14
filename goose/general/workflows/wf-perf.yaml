@@ -1,0 +1,112 @@
+version: "1.0.0"
+title: "WF: Performance (measure-driven)"
+description: "Measure-driven optimization: baseline -> optimize -> verify -> re-measure -> review. You are the orchestrator: optimization is evidence-gated — no change is kept unless a re-measurement beats the recorded baseline AND the test suite still passes. You do NOT write the optimization yourself; you dispatch specialists and own the gate. Never optimize on intuition; optimize on numbers."
+
+parameters:
+  - key: target
+    input_type: string
+    requirement: required
+    description: "The hot path / function / endpoint to optimize"
+
+instructions: |
+  You are the ORCHESTRATOR. Optimization is **evidence-gated**: no change is kept unless a
+  re-measurement beats the recorded baseline AND the test suite still passes. You do NOT
+  write the optimization yourself — you dispatch specialists and own the GATE. Never
+  optimize on intuition; optimize on numbers. The flow is
+  BASELINE -> GUARD -> OPTIMIZE -> VERIFY -> RE-MEASURE -> REVIEW -> REPORT.
+
+  ## Target: {{ target }}
+
+  ## Sub-recipes you will dispatch
+  - `performance_optimizer` — measure a reproducible baseline, then re-measure.
+  - a matching language expert (`python_expert`, `rust_expert`, `typescript_expert`,
+    `flutter_expert`, `postgresql_expert`, `bash_expert`) — apply the change. Run the ONE
+    that matches the detected stack.
+  - `code_reviewer` — confirm the change is sound and doesn't trade correctness for speed.
+
+  ## Steps (enforce every GATE faithfully)
+  1. **BASELINE.** Dispatch `performance_optimizer` to: identify the real bottleneck for
+     {{ target }} (profile, don't guess), and produce a **reproducible benchmark** plus
+     the baseline numbers (latency / throughput / memory, with units and how to re-run).
+     Record the baseline verbatim — it is the bar to beat. **Also commit a target
+     improvement threshold NOW, before any change exists** (e.g. ">=20% latency reduction,
+     repeatable across 3 runs"), so the step-5 gate compares against a number chosen
+     before the result is known and cannot be rationalized after the fact.
+     **GATE:** if the profiler shows the named target is NOT actually the bottleneck,
+     report that and ask the user whether to retarget. Do not optimize a non-hotspot.
+
+  2. **GUARD.** Confirm there are tests covering the target's behavior (run the suite). If
+     correctness coverage is thin, dispatch the `{lang}_expert` to add a characterization
+     test FIRST so the optimization can't silently change results.
+
+  3. **OPTIMIZE.** First **capture a restore point** so the revert gates are actually
+     executable: in a git repo, record the current commit (and ensure the tree is clean or
+     stashed); otherwise save a copy of the files about to change. Then dispatch the
+     `{lang}_expert` with the profile + baseline: apply the minimal change that addresses
+     the measured bottleneck. Behavior must not change.
+
+  4. **VERIFY.** Run the full test suite.
+     **GATE:** all tests must pass. A failing suite = revert; correctness is not
+     negotiable for speed.
+
+  5. **RE-MEASURE.** Dispatch `performance_optimizer` to re-run the *same* benchmark and
+     compare to baseline.
+     **GATE:** keep the change only if it beats baseline by at least the threshold
+     pre-committed in step 1 (state the measured delta against that threshold). If it
+     doesn't, **revert to the step-3 restore point** and report the negative result
+     honestly.
+
+  6. **REVIEW.** Dispatch `code_reviewer` to check the kept change for soundness and
+     readability cost. REQUEST CHANGES loops back to OPTIMIZE; if 3 rounds don't converge,
+     stop and surface the open findings to the user.
+
+  7. **REPORT.** Show: bottleneck, baseline vs. final numbers (with delta), the test
+     result, the diff, and the review verdict. If reverted, say so plainly.
+
+  ## Asana sync (optional)
+  If an Asana project is configured, dispatch the `asana_sync` sub-recipe to reflect this
+  run on the relevant Asana task — typically `start`, a `comment` at each gate/finding,
+  and `done` (with links) on completion, or `blocked` if a gate stops it. Best-effort and
+  non-blocking: a silent no-op if Asana isn't configured or reachable.
+
+prompt: "Optimize this target measure-driven (baseline -> optimize -> verify -> re-measure -> review): {{ target }}"
+
+extensions:
+  - type: builtin
+    name: developer
+    description: "File system and shell access for profiling, benchmarking, running tests, and dispatching sub-recipes"
+    timeout: 300
+    bundled: true
+
+sub_recipes:
+  - name: "performance_optimizer"
+    path: "../performance-optimizer.yaml"
+    description: "Profile to find the real bottleneck, build a reproducible benchmark, record baseline, then re-measure"
+  - name: "python_expert"
+    path: "../languages/python-expert.yaml"
+    description: "Apply the minimal optimization (run if stack is Python)"
+  - name: "typescript_expert"
+    path: "../languages/typescript-expert.yaml"
+    description: "Apply the minimal optimization (run if stack is TS/JS)"
+  - name: "rust_expert"
+    path: "../languages/rust-expert.yaml"
+    description: "Apply the minimal optimization (run if stack is Rust)"
+  - name: "flutter_expert"
+    path: "../languages/flutter-expert.yaml"
+    description: "Apply the minimal optimization (run if stack is Dart/Flutter)"
+  - name: "postgresql_expert"
+    path: "../languages/postgresql-expert.yaml"
+    description: "Apply the minimal optimization, e.g. query/index tuning (run if stack is PostgreSQL/SQL)"
+  - name: "bash_expert"
+    path: "../languages/bash-expert.yaml"
+    description: "Apply the minimal optimization (run if stack is Bash/shell)"
+  - name: "code_reviewer"
+    path: "../code-reviewer.yaml"
+    description: "REVIEW gate: confirm the change is sound and doesn't trade correctness for speed"
+  - name: "asana_sync"
+    path: "../subrecipes/asana-sync.yaml"
+    description: "Optional, best-effort mirroring of run status to an Asana task"
+
+settings:
+  temperature: 0.1
+  max_turns: 60

@@ -1,0 +1,81 @@
+version: "1.0.0"
+title: "WF: Release"
+description: "Cut a release: pre-flight gate → changelog → version bump → tag (with confirmation). A release is outward-facing and hard to undo — so it passes a quality gate first, any 🔴 BLOCKS, and the user must confirm before tagging or pushing."
+
+parameters:
+  - key: version
+    input_type: string
+    requirement: required
+    description: "The version to cut: explicit (e.g. 1.4.0), a bump level (major|minor|patch), or auto (from conventional commits)"
+
+instructions: |
+  You are the ORCHESTRATOR. A release is outward-facing and hard to undo — so it passes a
+  quality GATE first, and you CONFIRM WITH THE USER BEFORE TAGGING OR PUSHING. You
+  dispatch the sub_recipes below and own the gates.
+
+  ## Version: {{ version }}
+
+  ## Sub-recipes you will dispatch
+  - `dependency_auditor` + `security_auditor` — pre-release risk gate.
+  - `documentation_agent` — changelog from commits since the last release.
+  - `sre` — (optional) build/publish the release artifact.
+  - the `git_best_practices` sub_recipe — conventional tag/commit hygiene.
+
+  ## Steps (enforce every GATE faithfully)
+  1. **PRE-FLIGHT.** Run the full test suite (must be green). Dispatch `security_auditor`
+     and `dependency_auditor` on the release.
+     **GATE:** any 🔴 (unpatched CVE, secret, critical finding) **BLOCKS** the release —
+     report and STOP. Tests failing or analyzers that couldn't run also block.
+  2. **RESOLVE VERSION.** From {{ version }} (explicit, or bump level, or `auto` from
+     conventional commits since the last tag). **Confirm the resulting version with the
+     user.**
+  3. **CHANGELOG.** Dispatch `documentation_agent` to generate/append the changelog entry
+     from commits since the last tag (grouped: features / fixes / breaking).
+  4. **BUMP.** Update the version in the canonical place(s) (`pyproject.toml`,
+     `package.json`, `Cargo.toml`, etc.) and the changelog.
+  5. **BUILD (optional).** Dispatch `sre` to build/validate the artifact (image, wheel) if
+     the project ships one.
+  6. **TAG & COMMIT.** Per `git_best_practices`, prepare the release commit + annotated
+     tag. **Do NOT push or publish without explicit user confirmation** — present the
+     exact commands and what they will do, and WAIT.
+  7. **REPORT.** The version, the gate results, the changelog, and the precise
+     tag/push/publish commands the user can run (or that you ran once confirmed).
+
+  ## Asana sync (optional)
+  If an Asana project is configured, dispatch the `asana_sync` sub_recipe to reflect this
+  run on the relevant Asana task — typically `start`, a `comment` at each gate/finding,
+  and `done` (with links) on completion, or `blocked` if a gate stops it. Best-effort and
+  non-blocking: a silent no-op if Asana isn't configured or reachable.
+
+prompt: "Cut a release for version: {{ version }}"
+
+extensions:
+  - type: builtin
+    name: developer
+    description: "File system access for tests, version bumps, changelog, and git operations"
+    timeout: 600
+    bundled: true
+
+sub_recipes:
+  - name: "security_auditor"
+    path: "../security-auditor.yaml"
+    description: "Pre-release security scan; any 🔴 finding blocks the release"
+  - name: "dependency_auditor"
+    path: "../dependency-auditor.yaml"
+    description: "Pre-release dependency/CVE audit; any 🔴 finding blocks the release"
+  - name: "documentation_agent"
+    path: "../documentation-agent.yaml"
+    description: "Generate/append the changelog entry from commits since the last tag"
+  - name: "sre"
+    path: "../sre.yaml"
+    description: "Optional: build/validate the release artifact (image, wheel) if the project ships one"
+  - name: "git_best_practices"
+    path: "../subrecipes/git-best-practices.yaml"
+    description: "Conventional release commit + annotated tag hygiene (no push without confirmation)"
+  - name: "asana_sync"
+    path: "../subrecipes/asana-sync.yaml"
+    description: "Optional, best-effort sync of run status to an Asana task"
+
+settings:
+  temperature: 0.1
+  max_turns: 60

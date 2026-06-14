@@ -1,0 +1,120 @@
+version: "1.0.0"
+title: "WF: API (contract-first)"
+description: "Design then build an API contract-first: design -> implement (TDD) -> review -> docs. You are the orchestrator: you do NOT write code yourself, you dispatch specialists and own the gate between phases. The contract produced in DESIGN is the source of truth that IMPLEMENT and REVIEW are checked against."
+
+parameters:
+  - key: api
+    input_type: string
+    requirement: required
+    description: "The API / endpoint description to design and build contract-first"
+
+instructions: |
+  You are the ORCHESTRATOR. You do NOT write code yourself — you dispatch specialists and
+  own the GATE between phases. The contract produced in DESIGN is the source of truth that
+  IMPLEMENT and REVIEW are checked against. The flow is
+  DESIGN -> DETECT -> IMPLEMENT (test-first) -> REVIEW -> DOCS -> REPORT.
+
+  ## API: {{ api }}
+
+  ## Sub-recipes you will dispatch
+  - `api_designer` — endpoint/resource design, OpenAPI/schema, error format, pagination,
+    auth.
+  - `language_detection` — identify the stack and test command.
+  - `test_architect` — RED phase: failing tests derived from the contract.
+  - a matching language expert (`python_expert`, `rust_expert`, `typescript_expert`,
+    `flutter_expert`, `postgresql_expert`, `bash_expert`) — GREEN phase: implement. Run
+    the ONE that matches the detected stack.
+  - `code_reviewer` — quality + contract-conformance gate.
+  - `documentation_agent` — API reference from the contract.
+
+  ## Steps (enforce every GATE faithfully)
+  1. **DESIGN.** Dispatch `api_designer` for: {{ api }}. Require a concrete contract —
+     resource model, endpoint specs (method, path, request/response), error schema (e.g.
+     RFC 7807), pagination, auth, and status codes. **Persist the contract to a known
+     artifact: `.wf/api-contract.md`.** Every downstream phase reads that exact path (a
+     separate sub-recipe cannot see another's output, so the file is the only reliable
+     hand-off).
+     **GATE:** the contract must cover every endpoint the user asked for before you
+     proceed. If ambiguous, ask the user, do not guess the interface.
+
+  2. **DETECT.** Dispatch `language_detection`; pick the matching `{lang}_expert` and
+     record the test command. Stop if no expert matches.
+
+  3. **IMPLEMENT (test-first).** Drive the same contract-first TDD loop as wf-feature:
+     - RED: dispatch `test_architect` to write failing tests derived **from the contract
+       in `.wf/api-contract.md`** (request validation, success responses, error
+       responses, status codes). Tests only — no implementation. Run the suite; confirm
+       meaningfully red (stop and report if it errors for a toolchain reason).
+     - GREEN: dispatch the same `{lang}_expert` to implement the endpoints until tests
+       pass; it may NOT edit test files. Run the suite; confirm green. If the runner
+       errors for a toolchain reason rather than an assertion failure, stop and report.
+
+  4. **REVIEW.** Dispatch `code_reviewer` on the diff, explicitly checking **conformance
+     to the contract in `.wf/api-contract.md`** (paths, schemas, status codes, error
+     shape) plus the usual correctness/security/perf.
+     **GATE:** REQUEST CHANGES (any critical/major) loops back to GREEN; deviations from
+     the contract are blocking. If 3 review rounds pass without converging, stop and
+     surface the open findings to the user rather than looping further.
+
+  5. **DOCS.** Dispatch `documentation_agent` to generate the API reference from
+     `.wf/api-contract.md` and the implementation.
+
+  6. **REPORT.** Show: the contract summary, passing test output, the review verdict, and
+     any intentional contract changes made during implementation.
+
+  ## Asana sync (optional)
+  If an Asana project is configured, dispatch the `asana_sync` sub-recipe to reflect this
+  run on the relevant Asana task — typically `start`, a `comment` at each gate/finding,
+  and `done` (with links) on completion, or `blocked` if a gate stops it. Best-effort and
+  non-blocking: a silent no-op if Asana isn't configured or reachable.
+
+prompt: "Design and build this API contract-first (design -> implement TDD -> review -> docs): {{ api }}"
+
+extensions:
+  - type: builtin
+    name: developer
+    description: "File system and shell access for writing the contract artifact, running tests, and dispatching sub-recipes"
+    timeout: 300
+    bundled: true
+
+sub_recipes:
+  - name: "api_designer"
+    path: "../api-designer.yaml"
+    description: "DESIGN: produce .wf/api-contract.md — resources, endpoints, error schema, pagination, auth, status codes"
+  - name: "language_detection"
+    path: "../subrecipes/language-detection.yaml"
+    description: "Detect the stack and record the exact test command"
+  - name: "test_architect"
+    path: "../test-architect.yaml"
+    description: "RED: write failing tests derived from .wf/api-contract.md (the test AUTHOR)"
+  - name: "python_expert"
+    path: "../languages/python-expert.yaml"
+    description: "GREEN: implement endpoints to the contract (run if stack is Python)"
+  - name: "typescript_expert"
+    path: "../languages/typescript-expert.yaml"
+    description: "GREEN: implement endpoints to the contract (run if stack is TS/JS)"
+  - name: "rust_expert"
+    path: "../languages/rust-expert.yaml"
+    description: "GREEN: implement endpoints to the contract (run if stack is Rust)"
+  - name: "flutter_expert"
+    path: "../languages/flutter-expert.yaml"
+    description: "GREEN: implement endpoints/client to the contract (run if stack is Dart/Flutter)"
+  - name: "postgresql_expert"
+    path: "../languages/postgresql-expert.yaml"
+    description: "GREEN: implement data-layer endpoints to the contract (run if stack is PostgreSQL/SQL)"
+  - name: "bash_expert"
+    path: "../languages/bash-expert.yaml"
+    description: "GREEN: implement to the contract (run if stack is Bash/shell)"
+  - name: "code_reviewer"
+    path: "../code-reviewer.yaml"
+    description: "REVIEW gate: contract-conformance plus correctness/security/performance"
+  - name: "documentation_agent"
+    path: "../documentation-agent.yaml"
+    description: "DOCS: API reference generated from the contract and implementation"
+  - name: "asana_sync"
+    path: "../subrecipes/asana-sync.yaml"
+    description: "Optional, best-effort mirroring of run status to an Asana task"
+
+settings:
+  temperature: 0.1
+  max_turns: 60

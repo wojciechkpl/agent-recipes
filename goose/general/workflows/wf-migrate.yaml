@@ -1,0 +1,98 @@
+version: "1.0.0"
+title: "WF: Migrate / Codemod"
+description: "Large-scale codemod: discover sites → transform each in isolation → verify per-site → review. A migration touches many sites; the risks are missing a site and conflicting edits — so enumerate every site explicitly, transform each in isolation, verify per-site, and never silently skip."
+
+parameters:
+  - key: migration
+    input_type: string
+    requirement: required
+    description: "The migration to perform, e.g. 'rename API getUser() -> fetchUser()'"
+
+instructions: |
+  You are the ORCHESTRATOR. A migration touches many sites; the risks are MISSING a site
+  and CONFLICTING edits. So: enumerate every site explicitly, transform each in isolation,
+  verify per-site, and NEVER silently skip. You dispatch the sub_recipes below and own the
+  GATES.
+
+  ## Migration: {{ migration }}
+
+  ## Sub-recipes you will dispatch
+  - `analyst` — discover and enumerate every affected site (read-only).
+  - a matching language expert (`python_expert`, `typescript_expert`, `rust_expert`,
+    `flutter_expert`, `postgresql_expert`, `bash_expert`) — apply the transform. Run the
+    ONE that matches the project stack. Use **worktree isolation** so parallel transforms
+    don't conflict.
+  - `code_reviewer` — review the consolidated change.
+
+  ## Steps (enforce every GATE faithfully)
+  1. **DISCOVER.** Use grep/glob and dispatch `analyst` to produce the **complete list of
+     affected sites** (file:line) plus any tricky variants the naive search misses
+     (aliases, re-exports, dynamic uses).
+     **You (the orchestrator) capture the returned list to `.wf/migration-sites.md`** —
+     the analyst is read-only.
+     **GATE:** establish a green test baseline first. If the suite errors for a toolchain
+     reason (not a real failure), stop and report; if it's legitimately not green, STOP —
+     you can't distinguish migration breakage from pre-existing breakage.
+  2. **PLAN.** Define the exact transformation rule and the order. Decide automatable
+     (mechanical) vs. manual sites. State the rollback (git checkpoint).
+  3. **TRANSFORM.** For each site (or batch), dispatch the matching `{lang}_expert` to
+     apply the rule. **By default run sequentially** against the working tree (protected
+     by the step-2 checkpoint). **To parallelize independent batches, dispatch with
+     worktree isolation** so edits don't conflict, then **collect each worktree's diff and
+     apply them back to the main tree — resolving any overlaps — before VERIFY.**
+     Mechanical sites can be scripted; non-trivial ones get individual attention.
+  4. **VERIFY.** Run the test suite (per batch and at the end).
+     **GATE:** all green. Any breakage → fix or revert that site; do not proceed on red.
+     Verify PER SITE — no silent skips.
+  5. **REVIEW.** Dispatch `code_reviewer` on the full diff for correctness and missed/
+     incorrect sites.
+  6. **REPORT.** Sites transformed vs. **deferred/skipped (with reasons)** — NEVER let a
+     bounded migration read as complete when it isn't. Include the final green test run.
+
+  ## Asana sync (optional)
+  If an Asana project is configured, dispatch the `asana_sync` sub_recipe to reflect this
+  run on the relevant Asana task — typically `start`, a `comment` at each gate/finding,
+  and `done` (with links) on completion, or `blocked` if a gate stops it. Best-effort and
+  non-blocking: a silent no-op if Asana isn't configured or reachable.
+
+prompt: "Perform the migration / codemod: {{ migration }}"
+
+extensions:
+  - type: builtin
+    name: developer
+    description: "File system access for site discovery, transforms, tests, and dispatching sub-recipes"
+    timeout: 600
+    bundled: true
+
+sub_recipes:
+  - name: "analyst"
+    path: "../analyst.yaml"
+    description: "Read-only discovery of the complete list of affected sites, incl. tricky variants"
+  - name: "python_expert"
+    path: "../languages/python-expert.yaml"
+    description: "Apply the transform (run if stack is Python)"
+  - name: "typescript_expert"
+    path: "../languages/typescript-expert.yaml"
+    description: "Apply the transform (run if stack is TS/JS)"
+  - name: "rust_expert"
+    path: "../languages/rust-expert.yaml"
+    description: "Apply the transform (run if stack is Rust)"
+  - name: "flutter_expert"
+    path: "../languages/flutter-expert.yaml"
+    description: "Apply the transform (run if stack is Dart/Flutter)"
+  - name: "postgresql_expert"
+    path: "../languages/postgresql-expert.yaml"
+    description: "Apply the transform to SQL/migrations (run if the migration touches the DB layer)"
+  - name: "bash_expert"
+    path: "../languages/bash-expert.yaml"
+    description: "Apply the transform to shell/CI scripts (run if the migration touches scripts)"
+  - name: "code_reviewer"
+    path: "../code-reviewer.yaml"
+    description: "Review the consolidated diff for correctness and missed/incorrect sites"
+  - name: "asana_sync"
+    path: "../subrecipes/asana-sync.yaml"
+    description: "Optional, best-effort sync of run status to an Asana task"
+
+settings:
+  temperature: 0.1
+  max_turns: 80

@@ -1,0 +1,70 @@
+version: "1.0.0"
+title: "WF: Understand a Codebase"
+description: "Understand a codebase: scope → investigate (read-only) → document an onboarding map. Produces a trustworthy mental model of an unfamiliar codebase — structure, data flow, risks — and a direct answer to a specific question if asked. Read-only except for the documentation it produces."
+
+parameters:
+  - key: target
+    input_type: string
+    requirement: optional
+    default: "the whole repo"
+    description: "Path or subsystem to understand (default: whole repo); may include an optional question after an em dash"
+
+instructions: |
+  You are the ORCHESTRATOR. The goal is a trustworthy mental model of an unfamiliar
+  codebase: structure, data flow, risks — and, if asked, a direct answer to a specific
+  question. This workflow is READ-ONLY except for the documentation it produces. You
+  dispatch the sub_recipes below and own the GATES.
+
+  ## Target: {{ target }}
+
+  ## Sub-recipes you will dispatch
+  - `analyst` — read-only investigation; produces the structured analysis.
+  - `documentation_agent` — turns the analysis into a durable onboarding/architecture doc.
+
+  ## Steps (enforce every GATE faithfully)
+  1. **SCOPE.** Resolve the target and the question (if any). For a large repo, identify
+     the entry points and the few subsystems that matter most rather than everything.
+  2. **INVESTIGATE.** Dispatch `analyst` to map: components → responsibilities, the data
+     flow of a representative request, external integrations, and the riskiest areas —
+     with `file:line` evidence and observed-vs-inferred labels.
+     **You (the orchestrator) capture the analyst's returned analysis to `.wf/analysis.md`**
+     — the analyst is read-only and cannot write files. If a specific question was asked,
+     require a direct answer first.
+     **GATE:** the analysis must cite evidence; do not accept unsupported claims.
+  3. **DEEP-DIVE (optional).** If the question needs more, dispatch `analyst` again on the
+     specific path with the narrower question.
+  4. **DOCUMENT.** Dispatch `documentation_agent` to turn `.wf/analysis.md` into a
+     reader-friendly `ARCHITECTURE.md` / onboarding guide: a system overview, a component
+     map, a data-flow diagram (Mermaid), and "where to start" pointers.
+  5. **REPORT.** Summarize the mental model, answer the question if one was asked, and link
+     the produced doc. Flag what remains uncertain or unverified.
+
+  ## Asana sync (optional)
+  If an Asana project is configured, dispatch the `asana_sync` sub_recipe to reflect this
+  run on the relevant Asana task — typically `start`, a `comment` at each gate/finding,
+  and `done` (with links) on completion, or `blocked` if a gate stops it. Best-effort and
+  non-blocking: a silent no-op if Asana isn't configured or reachable.
+
+prompt: "Build a mental model and onboarding doc for: {{ target }}"
+
+extensions:
+  - type: builtin
+    name: developer
+    description: "File system access for read-only investigation and writing the onboarding doc"
+    timeout: 300
+    bundled: true
+
+sub_recipes:
+  - name: "analyst"
+    path: "../analyst.yaml"
+    description: "Read-only investigation producing a structured analysis with file:line evidence"
+  - name: "documentation_agent"
+    path: "../documentation-agent.yaml"
+    description: "Turn the analysis into a durable ARCHITECTURE.md / onboarding guide"
+  - name: "asana_sync"
+    path: "../subrecipes/asana-sync.yaml"
+    description: "Optional, best-effort sync of run status to an Asana task"
+
+settings:
+  temperature: 0.1
+  max_turns: 40

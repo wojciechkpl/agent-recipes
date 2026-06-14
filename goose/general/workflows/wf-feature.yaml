@@ -1,0 +1,132 @@
+version: "1.0.0"
+title: "WF: Feature (TDD)"
+description: "Feature via TDD: detect -> design -> red -> green -> review -> docs. You are the orchestrator: you do NOT write code or tests yourself, you dispatch the specialist sub-recipes one phase at a time and own the gate between phases. Stop and report if any gate fails."
+
+parameters:
+  - key: feature
+    input_type: string
+    requirement: required
+    description: "The feature description to build via TDD"
+
+instructions: |
+  You are the ORCHESTRATOR. You do NOT write code or tests yourself — you dispatch the
+  specialist sub-recipes below, one phase at a time, and you own the GATE between phases.
+  Stop and report if any gate fails. The flow is
+  DETECT -> DESIGN (optional) -> RED -> GREEN -> REVIEW -> DOCS -> REPORT.
+
+  ## Feature: {{ feature }}
+
+  ## Sub-recipes you will dispatch
+  - `language_detection` — identify language, framework, test runner, toolchain.
+  - `architect`, `api_designer`, or `ai_researcher` — optional design step for
+    non-trivial features (multi-module design / interface / algorithm respectively).
+  - `test_architect` — RED phase: writes the failing tests (the test AUTHOR).
+  - a matching language expert (`python_expert`, `rust_expert`, `flutter_expert`,
+    `postgresql_expert`, `bash_expert`, `typescript_expert`) — GREEN phase: makes the
+    tests pass. Run the ONE that matches the detected stack.
+  - `code_reviewer` — quality / security / performance gate.
+  - `documentation_agent` — docstrings, README, changelog.
+
+  ## Steps (enforce every GATE faithfully)
+  1. **DETECT.** Dispatch `language_detection`. Record the stack and the exact test
+     command. Pick the matching `{lang}_expert`. If no expert matches, tell the user
+     and stop.
+
+  2. **DESIGN (optional).** If `.wf/design.md` already exists (e.g. from wf-spec), read
+     it and build to it instead of re-designing. Otherwise, if the feature spans multiple
+     modules or introduces a new public API, dispatch `architect` (multi-module design +
+     ordered plan), `api_designer` (for an interface), or `ai_researcher` (for an
+     algorithm) to produce a design note. Skip for small features.
+
+  3. **RED.** Dispatch `test_architect` (the dedicated test AUTHOR — a *different* agent
+     from the implementer, so the tests specify the contract rather than the
+     implementation): "Write ONLY failing tests that specify the behavior for:
+     {{ feature }}. Do NOT implement anything. Cover happy path, edge cases, and error
+     conditions." Then run the test command yourself.
+     **GATE:** the new tests MUST fail *because the behavior is missing*. If the test
+     command instead errors for a toolchain/setup reason (missing interpreter, no
+     virtualenv, uninstalled deps), STOP and report the raw error to the user — do not
+     treat a broken runner as a valid RED.
+
+  4. **GREEN.** Dispatch the matching `{lang}_expert` — a genuinely different agent from
+     the `test_architect` that wrote the tests, giving identity-based RED/GREEN
+     separation — with: "Make the failing tests pass with the minimal correct
+     implementation. You may NOT edit any test file." Then run the test command.
+     **GATE:** all tests must pass. If the runner errors for a toolchain reason rather
+     than an assertion failure, stop and report it. Otherwise, if tests fail, dispatch
+     again with the failure output.
+
+  5. **REVIEW.** Dispatch `code_reviewer` on the diff.
+     **GATE:** if the verdict is REQUEST CHANGES (any critical or major finding),
+     summarize the findings, dispatch the `{lang}_expert` to address them (tests still
+     off-limits), re-run tests, and re-review. Loop until APPROVE.
+
+  6. **DOCS.** Dispatch `documentation_agent` to add/update docstrings, public-API docs,
+     and a changelog entry for the feature.
+
+  7. **REPORT.** Show the user: the final diff summary, the passing test output, and the
+     code-reviewer verdict. State plainly whether every gate passed.
+
+  ## Asana sync (optional side-channel)
+  If an Asana project is configured (see the `asana_sync` sub-recipe), dispatch
+  `asana_sync` to mirror this run: `start` (task -> In Progress) at step 1, a `comment`
+  after each gate (RED / GREEN / REVIEW), and `done` (+ PR link) at REPORT. It preflights
+  availability and **degrades gracefully** — if Asana isn't configured or is unreachable
+  it's a silent no-op and the run is unaffected. An Asana error must never fail the build.
+
+prompt: "Build this feature via TDD (detect -> design -> red -> green -> review -> docs): {{ feature }}"
+
+extensions:
+  - type: builtin
+    name: developer
+    description: "File system and shell access for running tests/builds and dispatching sub-recipes"
+    timeout: 300
+    bundled: true
+
+sub_recipes:
+  - name: "language_detection"
+    path: "../subrecipes/language-detection.yaml"
+    description: "Detect language, framework, test runner, and toolchain; record the exact test command"
+  - name: "architect"
+    path: "../architect.yaml"
+    description: "Optional multi-module design + ordered plan for non-trivial features"
+  - name: "api_designer"
+    path: "../api-designer.yaml"
+    description: "Optional interface/contract design when the feature introduces a new public API"
+  - name: "ai_researcher"
+    path: "../ai-researcher.yaml"
+    description: "Optional algorithm/approach research for a non-trivial algorithmic feature"
+  - name: "test_architect"
+    path: "../test-architect.yaml"
+    description: "RED phase: write ONLY failing tests that specify the contract (the test AUTHOR)"
+  - name: "python_expert"
+    path: "../languages/python-expert.yaml"
+    description: "GREEN phase: make failing tests pass (run if stack is Python)"
+  - name: "typescript_expert"
+    path: "../languages/typescript-expert.yaml"
+    description: "GREEN phase: make failing tests pass (run if stack is TS/JS)"
+  - name: "rust_expert"
+    path: "../languages/rust-expert.yaml"
+    description: "GREEN phase: make failing tests pass (run if stack is Rust)"
+  - name: "flutter_expert"
+    path: "../languages/flutter-expert.yaml"
+    description: "GREEN phase: make failing tests pass (run if stack is Dart/Flutter)"
+  - name: "postgresql_expert"
+    path: "../languages/postgresql-expert.yaml"
+    description: "GREEN phase: make failing tests pass (run if stack is PostgreSQL/SQL)"
+  - name: "bash_expert"
+    path: "../languages/bash-expert.yaml"
+    description: "GREEN phase: make failing tests pass (run if stack is Bash/shell)"
+  - name: "code_reviewer"
+    path: "../code-reviewer.yaml"
+    description: "REVIEW gate: correctness, security, performance, maintainability"
+  - name: "documentation_agent"
+    path: "../documentation-agent.yaml"
+    description: "DOCS: docstrings, public-API docs, changelog entry for the feature"
+  - name: "asana_sync"
+    path: "../subrecipes/asana-sync.yaml"
+    description: "Optional, best-effort mirroring of run status to an Asana task"
+
+settings:
+  temperature: 0.1
+  max_turns: 60

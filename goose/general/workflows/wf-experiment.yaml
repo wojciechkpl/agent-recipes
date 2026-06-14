@@ -1,0 +1,94 @@
+version: "1.0.0"
+title: "WF: ML Experiment"
+description: "ML experiment loop: frame → data → baseline → variant → compare (tracked) → report. An experiment is only meaningful if it is reproducible and its conclusion follows from logged evidence — never from a single unseeded run or a vibe."
+
+parameters:
+  - key: idea
+    input_type: string
+    requirement: required
+    description: "The hypothesis or approach to test (a named hypothesis, not an open question)"
+
+instructions: |
+  You are the ORCHESTRATOR of an ML experiment loop. An experiment is only meaningful
+  if it is REPRODUCIBLE and its conclusion follows from LOGGED EVIDENCE — never from a
+  single unseeded run or a vibe. You dispatch the sub_recipes below and own the GATES.
+  (To go from an open question to a chosen approach first, run wf-ml-research; this
+  workflow tests a NAMED hypothesis.)
+
+  ## Hypothesis: {{ idea }}
+
+  ## Sub-recipes you will dispatch
+  - `ai_researcher` — sharpen the hypothesis, baseline, metric, and what would falsify it.
+  - `data_engineer` — reproducible dataset prep (deterministic, validated).
+  - a matching language expert (`python_expert`, etc.) — implement baseline + variant.
+    Run the ONE that matches the project stack.
+  - `mlflow_tracking` — log params/metrics/artifacts for every run.
+  - `docker_ml_environment` — (if needed) a reproducible, pinned environment.
+
+  ## Steps (enforce every GATE faithfully)
+  1. **FRAME.** Dispatch `ai_researcher` (or read `.wf/ml-approach.md` if wf-ml-research
+     produced one): state the hypothesis, the SINGLE primary metric, the baseline, and
+     the decision rule (what result confirms vs. refutes). Pre-commit the seed(s).
+     **Persist the plan — hypothesis, primary metric, baseline, decision rule, seed — to
+     `.wf/experiment-plan.md`; the BASELINE/VARIANT and `mlflow_tracking` steps read it**
+     (a separate sub-recipe cannot see another's output — the file is the hand-off).
+     **GATE:** do not proceed without a falsifiable hypothesis and one primary metric.
+  2. **DATA.** Dispatch `data_engineer` for a reproducible, validated dataset split
+     (fixed seed, documented).
+     **GATE:** same input → same split, verified.
+  3. **BASELINE.** Implement/obtain the baseline; run it; log to MLflow via
+     `mlflow_tracking` (params, metric, seed). Record the baseline metric value. If the
+     environment is not reproducible, dispatch `docker_ml_environment` first.
+  4. **VARIANT.** Implement the hypothesis change; run under the SAME data/seed/eval; log
+     to MLflow. Keep everything but the tested variable constant.
+  5. **COMPARE.** Pull both runs' metrics from MLflow. State the delta and whether it
+     meets the decision rule. Prefer ≥1 repeat/seed to guard against noise.
+     **GATE:** the comparison must come from LOGGED runs you can point to, not memory.
+  6. **REPORT.** Hypothesis, setup (data/seed/env), baseline vs. variant metrics with
+     delta, and the verdict — INCLUDING A NEGATIVE RESULT, stated honestly. Note host
+     limits (e.g. no GPU) if they capped the run.
+
+  ## Asana sync (optional)
+  If an Asana project is configured, dispatch the `asana_sync` sub_recipe to reflect this
+  run on the relevant Asana task — typically `start`, a `comment` at each gate/finding,
+  and `done` (with links) on completion, or `blocked` if a gate stops it. Best-effort and
+  non-blocking: a silent no-op if Asana isn't configured or reachable.
+
+prompt: "Run the ML experiment loop for hypothesis: {{ idea }}"
+
+extensions:
+  - type: builtin
+    name: developer
+    description: "File system access for code, data, MLflow runs, and dispatching sub-recipes"
+    timeout: 600
+    bundled: true
+
+sub_recipes:
+  - name: "ai_researcher"
+    path: "../ai-researcher.yaml"
+    description: "Sharpen the hypothesis, baseline, primary metric, and falsification criteria"
+  - name: "data_engineer"
+    path: "../data-engineer.yaml"
+    description: "Reproducible, validated dataset prep with a fixed, documented seed"
+  - name: "python_expert"
+    path: "../languages/python-expert.yaml"
+    description: "Implement baseline + variant (run if stack is Python)"
+  - name: "typescript_expert"
+    path: "../languages/typescript-expert.yaml"
+    description: "Implement baseline + variant (run if stack is TS/JS)"
+  - name: "rust_expert"
+    path: "../languages/rust-expert.yaml"
+    description: "Implement baseline + variant (run if stack is Rust)"
+  - name: "mlflow_tracking"
+    path: "../subrecipes/mlflow-tracking.yaml"
+    description: "Log params/metrics/artifacts for every run; source of truth for COMPARE"
+  - name: "docker_ml_environment"
+    path: "../subrecipes/docker-ml-environment.yaml"
+    description: "Set up a reproducible, pinned ML environment when needed"
+  - name: "asana_sync"
+    path: "../subrecipes/asana-sync.yaml"
+    description: "Optional, best-effort sync of run status to an Asana task"
+
+settings:
+  temperature: 0.1
+  max_turns: 80

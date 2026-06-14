@@ -1,0 +1,99 @@
+version: "1.0.0"
+title: "WF: Pre-PR Gate"
+description: "Pre-merge gate: static analysis + review + security + deps; any critical blocks. You are the orchestrator running a read-only merge gate: you do NOT fix anything, you run independent analyses, consolidate them, and return a single PASS / BLOCK verdict. Fixing is a separate workflow. Keep this run non-destructive: no file edits."
+
+parameters:
+  - key: target
+    input_type: string
+    requirement: optional
+    default: ""
+    description: "Target to gate: a path or git ref. If empty, default to the working diff (git diff + staged); if not a git repo, the whole project."
+  - key: block_on_majors
+    input_type: boolean
+    requirement: optional
+    default: false
+    description: "If true, also BLOCK on any major finding (not only criticals)"
+
+instructions: |
+  You are the ORCHESTRATOR running a read-only **merge gate**. You do NOT fix anything
+  here — you run independent analyses, consolidate them, and return a single PASS / BLOCK
+  verdict. Fixing is a separate workflow (wf-bugfix or a language expert). Keep this run
+  non-destructive: **no file edits**. The flow is SCOPE -> ANALYZE (parallel) ->
+  CONSOLIDATE -> GATE -> REPORT.
+
+  ## Target: {{ target }}   (if empty, default to the working diff: `git diff` plus staged
+  changes; if not a git repo, use the whole project)
+  ## Block on majors: {{ block_on_majors }}
+
+  ## Sub-recipes you will dispatch
+  - `static_analysis` — linters, formatters, type checkers for the detected stack.
+  - `code_reviewer` — correctness, design, maintainability.
+  - `security_auditor` — OWASP Top 10, secret detection, dependency CVEs.
+  - `dependency_auditor` — vulnerable / unused / outdated / oversized deps.
+
+  ## Steps (enforce every GATE faithfully)
+  1. **SCOPE.** Resolve the target. If a git ref/diff, extract the changed files with
+     `git diff --name-only`; pass the concrete scope to every analyzer so they review the
+     same surface.
+
+  2. **ANALYZE (parallel).** Dispatch all four analyzers concurrently — they are
+     independent and read-only. Give each the same scope. Ask every analyzer to label
+     findings with the shared severity scale (critical, major, minor, suggestion, info) —
+     see `shared/severity-scale.md`. Require each analyzer to return an explicit status
+     (`completed` vs `could-not-run`). Treat a missing, errored, or status-less result as
+     `could-not-run` — never as "no findings".
+
+  3. **CONSOLIDATE.** Merge findings into one report. De-duplicate where two analyzers
+     flag the same line. Group by severity, then by file.
+
+  4. **GATE.**
+     - **BLOCK (inconclusive)** if any analyzer is `could-not-run` — never PASS on partial
+       coverage.
+     - **BLOCK** if there is **any critical** (or any major, only if {{ block_on_majors }}
+       is true or the invocation explicitly asked to block on majors).
+     - **PASS** only when all four analyzers completed and produced no blocking finding.
+       Minor / suggestion findings are reported but never block.
+
+  5. **REPORT.** Emit:
+     - One-line verdict: `PASS` or `BLOCK`.
+     - A counts line (e.g. `critical 1  major 2  minor 4`).
+     - The grouped findings with `file:line` references.
+     - If BLOCK, the minimal set of critical items that must be resolved, and a suggested
+       next step (wf-bugfix for a defect, the matching language expert for a fix).
+     Do not claim PASS if any analyzer failed to run — report the failure instead.
+
+  ## Asana sync (optional)
+  If an Asana project is configured, dispatch the `asana_sync` sub-recipe to reflect this
+  run on the relevant Asana task — typically `start`, a `comment` at each gate/finding,
+  and `done` (with links) on completion, or `blocked` if a gate stops it. Best-effort and
+  non-blocking: a silent no-op if Asana isn't configured or reachable.
+
+prompt: "Run the pre-PR merge gate (static analysis + review + security + deps) over: {{ target }}"
+
+extensions:
+  - type: builtin
+    name: developer
+    description: "File system and shell access for git scoping and dispatching read-only analyzers"
+    timeout: 300
+    bundled: true
+
+sub_recipes:
+  - name: "static_analysis"
+    path: "../subrecipes/static-analysis.yaml"
+    description: "Run linters, formatters, type checkers for the detected stack"
+  - name: "code_reviewer"
+    path: "../code-reviewer.yaml"
+    description: "Correctness, design, and maintainability review of the scoped surface"
+  - name: "security_auditor"
+    path: "../security-auditor.yaml"
+    description: "OWASP Top 10, secret detection, dependency CVEs"
+  - name: "dependency_auditor"
+    path: "../dependency-auditor.yaml"
+    description: "Vulnerable / unused / outdated / oversized dependency analysis"
+  - name: "asana_sync"
+    path: "../subrecipes/asana-sync.yaml"
+    description: "Optional, best-effort mirroring of gate status to an Asana task"
+
+settings:
+  temperature: 0.1
+  max_turns: 50

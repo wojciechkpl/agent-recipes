@@ -1,0 +1,97 @@
+version: "1.0.0"
+title: "WF: Upgrade Dependencies"
+description: "Guarded dependency upgrade: audit → upgrade one at a time → test → revert-on-break → review. Upgrades are applied one dependency at a time behind a green test suite, and any single bump that breaks is reverted (manifest + lockfile)."
+
+parameters:
+  - key: target
+    input_type: string
+    requirement: optional
+    default: "all outdated/vulnerable dependencies"
+    description: "Specific dependency to upgrade. If empty, all outdated/vulnerable dependencies are in scope."
+
+instructions: |
+  You are the ORCHESTRATOR of a guarded dependency-upgrade workflow. Dependency
+  upgrades break things — so upgrade ONE AT A TIME behind the test suite, and revert
+  any single bump that breaks. You do NOT edit code yourself; you dispatch the
+  sub_recipes below as specialists and you own the GATES.
+
+  ## Scope: {{ target }}
+
+  ## Sub-recipes you will dispatch
+  - `dependency_auditor` — list outdated/vulnerable deps, prioritized by risk.
+  - a matching language expert (`python_expert`, `typescript_expert`, `rust_expert`,
+    `flutter_expert`, `postgresql_expert`, `bash_expert`) — run the ONE that matches the
+    project stack to apply each bump and fix the resulting breakage.
+  - `code_reviewer` — review the net change.
+
+  ## Steps (enforce every GATE faithfully)
+  1. **AUDIT.** Dispatch `dependency_auditor` to produce a prioritized list (security
+     🔴 first, then outdated). Confirm a runnable test command exists; run it once to
+     establish a green baseline.
+     **GATE:** if the baseline isn't green, STOP — fix the suite before upgrading. You
+     cannot tell an upgrade break from a pre-existing one on a red baseline.
+  2. **PER DEPENDENCY (loop, highest-risk first).** For each dep in scope:
+     a. **CHECKPOINT the manifest + lockfile** (git stash/commit, or save the manifest
+        and lockfile). A bump mutates the lockfile and transitive tree, so a revert must
+        restore those, not just source files.
+     b. Dispatch the matching `{lang}_expert` to bump ONLY that one dependency (and
+        pinned transitives if required) and fix any resulting breakage — no unrelated
+        changes.
+     c. Run the full suite.
+        **GATE:** green → keep it and move on. Broken and unfixable within reason →
+        REVERT the manifest + lockfile to the checkpoint and reinstall, record it as
+        *deferred (breaking)*, and continue with the next dep. One-at-a-time and
+        revert-on-break are non-negotiable.
+  3. **REVIEW.** Dispatch `code_reviewer` on the cumulative diff (lockfile + any code
+     adaptations).
+  4. **REPORT.** A table: each dep → old→new version, kept/deferred, and why. List the
+     security 🔴s this cleared and any deferred breaking upgrades that need follow-up.
+     NEVER report "upgraded" for a dep whose suite you did not see go green.
+
+  ## Asana sync (optional)
+  If an Asana project is configured, dispatch the `asana_sync` sub_recipe to reflect this
+  run on the relevant Asana task — typically `start`, a `comment` at each gate/finding,
+  and `done` (with links) on completion, or `blocked` if a gate stops it. Best-effort and
+  non-blocking: a silent no-op if Asana isn't configured or reachable.
+
+prompt: "Run the guarded dependency upgrade for: {{ target }}"
+
+extensions:
+  - type: builtin
+    name: developer
+    description: "File system access for reading manifests, running tests, and dispatching sub-recipes"
+    timeout: 600
+    bundled: true
+
+sub_recipes:
+  - name: "dependency_auditor"
+    path: "../dependency-auditor.yaml"
+    description: "List outdated/vulnerable dependencies, prioritized by risk (security first)"
+  - name: "python_expert"
+    path: "../languages/python-expert.yaml"
+    description: "Apply a Python dependency bump and fix resulting breakage (run if stack is Python)"
+  - name: "typescript_expert"
+    path: "../languages/typescript-expert.yaml"
+    description: "Apply a TS/JS dependency bump and fix resulting breakage (run if stack is TS/JS)"
+  - name: "rust_expert"
+    path: "../languages/rust-expert.yaml"
+    description: "Apply a Rust dependency bump and fix resulting breakage (run if stack is Rust)"
+  - name: "flutter_expert"
+    path: "../languages/flutter-expert.yaml"
+    description: "Apply a Dart/Flutter dependency bump and fix resulting breakage (run if stack is Flutter)"
+  - name: "postgresql_expert"
+    path: "../languages/postgresql-expert.yaml"
+    description: "Apply DB-driver/SQL-tooling changes if the upgrade touches the database layer"
+  - name: "bash_expert"
+    path: "../languages/bash-expert.yaml"
+    description: "Apply shell/CI tooling changes if the upgrade touches scripts or pipelines"
+  - name: "code_reviewer"
+    path: "../code-reviewer.yaml"
+    description: "Review the cumulative upgrade diff (lockfile + code adaptations)"
+  - name: "asana_sync"
+    path: "../subrecipes/asana-sync.yaml"
+    description: "Optional, best-effort sync of run status to an Asana task"
+
+settings:
+  temperature: 0.1
+  max_turns: 60

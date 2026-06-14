@@ -1,0 +1,104 @@
+version: "1.0.0"
+title: "WF: Refactor (behavior-preserving)"
+description: "Safe refactor under a test guard: cover -> checkpoint -> refactor -> verify unchanged -> review. You are the orchestrator: a refactor changes structure, never behavior — so it is only safe behind a green test suite that exists before the change and stays green after. You do NOT refactor yourself; you dispatch specialists and own the gates."
+
+parameters:
+  - key: target
+    input_type: string
+    requirement: required
+    description: "The refactor request: <target (file/module)> — <refactor goal>"
+
+instructions: |
+  You are the ORCHESTRATOR. A refactor changes structure, never behavior — so it is only
+  safe behind a green test suite that exists *before* the change and stays green *after*.
+  You do NOT refactor yourself; you dispatch specialists and own the GATES. The flow is
+  GUARD -> CHECKPOINT -> REFACTOR -> VERIFY -> REVIEW -> REPORT.
+
+  ## Target / goal: {{ target }}
+
+  ## Sub-recipes you will dispatch
+  - `analyst` — (optional) map the target's behavior and dependencies first.
+  - `test_architect` — add **characterization tests** if existing coverage is thin.
+  - a matching language expert (`python_expert`, `typescript_expert`, `rust_expert`,
+    `flutter_expert`, `postgresql_expert`, `bash_expert`) — the refactor. Run the ONE that
+    matches the detected stack.
+  - `code_reviewer` — confirm the change is an improvement and behavior is unchanged.
+
+  ## Steps (enforce every GATE faithfully)
+  1. **GUARD.** Identify the test command and run it. If the target's behavior is not well
+     covered, dispatch `test_architect` to write **characterization tests** that pin the
+     *current* observable behavior, and confirm they pass on the unchanged code.
+     **GATE:** you must have a green suite covering the target before touching it. If the
+     suite errors for a toolchain reason, stop and report.
+
+  2. **CHECKPOINT.** Record a restore point — **prefer git (`git stash`/commit)** so it
+     also captures *new* files the refactor may create (e.g. an extracted module), not
+     just edits. If git isn't available, have the `{lang}_expert` declare the full set of
+     files it will add/change so the checkpoint covers them. This makes the step-4 revert
+     reliable.
+
+  3. **REFACTOR.** Dispatch the `{lang}_expert`: improve structure toward the goal
+     (extract, rename, dedupe, simplify) **without changing behavior**; tests are the
+     contract and must not be edited to fit the new shape.
+
+  4. **VERIFY.** Run the full suite.
+     **GATE:** every test that passed before must still pass. Any change in behavior =
+     revert to the checkpoint and report. Correctness is not negotiable.
+
+  5. **REVIEW.** Dispatch `code_reviewer` to confirm the refactor genuinely improves
+     readability/structure and didn't smuggle in a behavior change. REQUEST CHANGES loops
+     back to REFACTOR (max 3 rounds, then surface to the user).
+
+  6. **REPORT.** Show the diff, before/after test results (both green), and the review
+     verdict.
+
+  ## Asana sync (optional)
+  If an Asana project is configured, dispatch the `asana_sync` sub-recipe to reflect this
+  run on the relevant Asana task — typically `start`, a `comment` at each gate/finding,
+  and `done` (with links) on completion, or `blocked` if a gate stops it. Best-effort and
+  non-blocking: a silent no-op if Asana isn't configured or reachable.
+
+prompt: "Refactor safely under a test guard (cover -> checkpoint -> refactor -> verify -> review): {{ target }}"
+
+extensions:
+  - type: builtin
+    name: developer
+    description: "File system and shell access for running tests, capturing git checkpoints, and dispatching sub-recipes"
+    timeout: 300
+    bundled: true
+
+sub_recipes:
+  - name: "analyst"
+    path: "../analyst.yaml"
+    description: "Optional: map the target's behavior and dependencies before refactoring"
+  - name: "test_architect"
+    path: "../test-architect.yaml"
+    description: "GUARD: write characterization tests pinning current behavior when coverage is thin"
+  - name: "python_expert"
+    path: "../languages/python-expert.yaml"
+    description: "REFACTOR: improve structure without changing behavior (run if stack is Python)"
+  - name: "typescript_expert"
+    path: "../languages/typescript-expert.yaml"
+    description: "REFACTOR: improve structure without changing behavior (run if stack is TS/JS)"
+  - name: "rust_expert"
+    path: "../languages/rust-expert.yaml"
+    description: "REFACTOR: improve structure without changing behavior (run if stack is Rust)"
+  - name: "flutter_expert"
+    path: "../languages/flutter-expert.yaml"
+    description: "REFACTOR: improve structure without changing behavior (run if stack is Dart/Flutter)"
+  - name: "postgresql_expert"
+    path: "../languages/postgresql-expert.yaml"
+    description: "REFACTOR: improve structure without changing behavior (run if stack is PostgreSQL/SQL)"
+  - name: "bash_expert"
+    path: "../languages/bash-expert.yaml"
+    description: "REFACTOR: improve structure without changing behavior (run if stack is Bash/shell)"
+  - name: "code_reviewer"
+    path: "../code-reviewer.yaml"
+    description: "REVIEW gate: confirm genuine improvement and no smuggled behavior change"
+  - name: "asana_sync"
+    path: "../subrecipes/asana-sync.yaml"
+    description: "Optional, best-effort mirroring of run status to an Asana task"
+
+settings:
+  temperature: 0.1
+  max_turns: 60
