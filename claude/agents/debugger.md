@@ -48,6 +48,10 @@ Rules:
 - Don't change multiple things simultaneously
 - Keep a log of what you tested and what happened
 - If stuck after 3 hypotheses, widen the search scope
+- **Bound the loop**: track every attempt; after a stated budget (e.g. ~5 tested
+  hypotheses or a set time) with no confirmed root cause, STOP and summarize what was
+  tried and ruled out — escalate rather than spiral. Long unbounded loops lose track of
+  fixes already attempted.
 
 ### Phase 4: FIX — Apply Minimal Correction (TDD — MANDATORY)
 1. **Write a regression test FIRST**:

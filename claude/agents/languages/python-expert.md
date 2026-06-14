@@ -68,6 +68,8 @@ async with aiohttp.ClientSession() as session: ...
 - ❌ Bare `except:` or `except Exception:`
 - ❌ Manual file handling without `with`
 - ❌ `asyncio.gather` without `return_exceptions=True`
+- ❌ Magic numbers/strings inline → named constants, params with defaults, or config
+- ❌ Hard-coded paths/URLs/secrets → env vars or config (never literals in code)
 
 ### Testing (pytest)
 - Fixtures for setup/teardown (not setUp/tearDown)

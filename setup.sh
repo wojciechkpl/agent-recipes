@@ -122,6 +122,69 @@ copy_agents() {
     ok "Copied $count agent files to $dest"
 }
 
+copy_commands() {
+    local dest="$1"
+    local src="${SCRIPT_DIR}/claude/commands"
+
+    if [[ ! -d "$src" ]]; then
+        warn "No commands directory at $src — skipping workflow commands"
+        return
+    fi
+
+    if $DRY_RUN; then
+        info "[dry-run] mkdir -p $dest"
+    else
+        mkdir -p "$dest"
+    fi
+
+    local count=0
+    for f in "$src"/wf-*.md; do
+        [[ -f "$f" ]] || continue
+        if $DRY_RUN; then
+            info "[dry-run] cp $f -> $dest/"
+        else
+            cp "$f" "$dest/"
+        fi
+        count=$((count + 1))
+    done
+
+    if $DRY_RUN; then
+        info "[dry-run] would copy $count workflow command(s) to $dest"
+    else
+        ok "Copied $count workflow command(s) to $dest"
+    fi
+}
+
+remove_commands() {
+    local dest="$1"
+    if [[ ! -d "$dest" ]]; then
+        info "No commands to remove at $dest"
+        return
+    fi
+
+    local count=0
+    for f in "$dest"/wf-*.md; do
+        [[ -f "$f" ]] || continue
+        if $DRY_RUN; then
+            info "[dry-run] rm $f"
+        else
+            rm -f "$f"
+        fi
+        count=$((count + 1))
+    done
+
+    # Drop the directory only if our removal left it empty (tolerate a race).
+    if ! $DRY_RUN && [[ -d "$dest" ]] && [[ -z "$(ls -A "$dest" 2>/dev/null)" ]]; then
+        rmdir "$dest" 2>/dev/null || true
+    fi
+
+    if $DRY_RUN; then
+        info "[dry-run] would remove $count workflow command(s) from $dest"
+    else
+        ok "Removed $count workflow command(s) from $dest"
+    fi
+}
+
 remove_agents() {
     local dest="$1"
     if [[ -d "$dest" ]]; then
@@ -222,6 +285,8 @@ if $UNINSTALL; then
 
     remove_agents "${HOME}/.claude/agents"
     remove_agents ".claude/agents"
+    remove_commands "${HOME}/.claude/commands"
+    remove_commands ".claude/commands"
     remove_goose_config
 
     printf "\n${GREEN}${BOLD}Uninstall complete.${RESET}\n"
@@ -234,12 +299,16 @@ printf "\n${BOLD}Setting up agent recipes...${RESET}\n\n"
 if $INSTALL_CLAUDE; then
     info "Installing Claude Code agents (user-level -> ~/.claude/agents/)"
     copy_agents "${HOME}/.claude/agents"
+    info "Installing workflow commands (user-level -> ~/.claude/commands/)"
+    copy_commands "${HOME}/.claude/commands"
     printf "\n"
 fi
 
 if $INSTALL_CLAUDE_PROJECT; then
     info "Installing Claude Code agents (project-level -> .claude/agents/)"
     copy_agents ".claude/agents"
+    info "Installing workflow commands (project-level -> .claude/commands/)"
+    copy_commands ".claude/commands"
     printf "\n"
 fi
 
