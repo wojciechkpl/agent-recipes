@@ -28,10 +28,11 @@ time, and you own the gate between phases. Stop and report if any gate fails.
    command. Pick the matching `{lang}-expert`. If no expert matches, tell the user
    and stop.
 
-2. **DESIGN (optional).** If the feature spans multiple modules or introduces a new
-   public API, dispatch `architect` (multi-module design + ordered plan),
-   `api-designer` (for an interface), or `ai-researcher` (for an algorithm) to
-   produce a design note. Skip for small features.
+2. **DESIGN (optional).** If `.wf/design.md` already exists (e.g. from `/wf-spec`),
+   read it and build to it instead of re-designing. Otherwise, if the feature spans
+   multiple modules or introduces a new public API, dispatch `architect` (multi-module
+   design + ordered plan), `api-designer` (for an interface), or `ai-researcher` (for
+   an algorithm) to produce a design note. Skip for small features.
 
 3. **RED.** Dispatch `test-architect` (the dedicated test AUTHOR — a *different*
    agent from the implementer, so the tests specify the contract rather than the

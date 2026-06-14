@@ -27,6 +27,75 @@ Never optimize without profiling data. Establish baselines, identify the 20% cau
 - Deterministic seeds for ML experiments
 - Docker environments for ML workloads
 
+### 5. Configuration over Hard-Coding
+Never bury magic numbers, tunable constants, paths, URLs, credentials, or business
+values as inline literals. Centralize them:
+- **Named constants** (module/class top) for fixed values — with a comment on the
+  unit and *why* that value.
+- **Config files / env vars** (12-factor) for anything environment- or
+  deployment-specific (endpoints, ports, feature flags, credentials).
+- **Parameters with defaults** for tunables a caller might vary (seeds, limits,
+  thresholds, retry counts, batch sizes) — never a literal buried in the body.
+- A bare literal is acceptable only when self-evident and used once (e.g. `0`/`1`
+  for indexing). Anything reused, tuned, or non-obvious gets a name.
+
+Implementers extract these at write time; reviewers flag inline magic values.
+
+### 6. Gather Inputs Once, Then Execute
+Front-load uncertainty; do not dribble validation questions across a task.
+- **Preflight.** Before changing anything, enumerate every input the change needs —
+  target files, desired behavior, acceptance criteria, constraints, environment.
+  Answer what you can by **reading the code/config yourself**; never ask the user for
+  what you can discover.
+- **Ask once, batched.** If blocking unknowns remain, ask them in a single
+  consolidated round (prefer a structured multiple-choice), not one question at a time.
+- **State assumptions and default.** Prefer a sensible, stated default over a question;
+  let the user correct it. Only a genuinely blocking ambiguity warrants stopping.
+- **Surface, don't silently pick.** If a task has multiple valid interpretations,
+  surface them with their tradeoffs and choose one explicitly (saying why) — never
+  resolve the ambiguity invisibly.
+- **Then execute autonomously** through the planned steps/gates without re-confirming
+  each one. Re-prompt only for a new decision the gathered inputs didn't cover, or
+  before an irreversible / outward-facing action (deploy, push, drop, send).
+
+### 7. Surgical, Minimal Diffs
+Change only what the task requires — the smallest correct diff is the goal.
+- Touch only the lines/files the task needs. No drive-by edits, opportunistic
+  refactors, renames, or reformatting of code you didn't have to change.
+- Match the surrounding style and idiom; do not reflow, reorder imports, or reformat
+  untouched code (leave that to the formatter, in its own change).
+- Keep concerns separate: a feature, a fix, and a refactor are distinct changes —
+  don't bundle them. Spotted an unrelated issue? Report it; don't fix it inline.
+- Preserve public APIs and existing behavior unless the task is explicitly to change
+  them. Prefer extending and reusing existing helpers over rewriting or duplicating.
+- **Dead code:** delete dead code your change *introduces*; for pre-existing dead code
+  you merely noticed, report it — don't silently remove it (that's an unrelated change).
+
+### 8. Simplicity First (YAGNI)
+Build only what the task asks for; the simplest thing that meets the criteria wins.
+- No features, options, or extension points beyond the request. No abstraction for code
+  with a single caller. No "flexible"/"configurable" layers, plugin points, or generality
+  that weren't asked for.
+- No error handling for impossible states — handle inputs that can actually occur, not
+  hypothetical ones. (Boundary validation per §3 still applies.)
+- **This reconciles with §5, it does not contradict it.** Name the values you already
+  use; don't invent configurability you don't. Extracting a literal you are *already*
+  using into a named constant/parameter is good (§5); building a config system, a
+  flexible layer, or generalized hooks nobody requested is overengineering (§8). The
+  test: does the parameter have a *current* caller/value, or is it speculative?
+- Prefer deleting to adding. If a simpler design meets the success criteria, use it.
+
+### 9. Goal-Driven Execution
+Work to explicit success criteria, then prove you met them.
+- Before starting, state what "done" means as **observable, checkable outcomes** (tests
+  pass, endpoint returns X, metric beats Y) — not a list of steps. Then iterate freely
+  toward them; the gates do the steering.
+- **Verify before claiming done.** Run the check and show the result — never assert a
+  success you did not observe (see §1 and the workflow gate pattern). A failed or unrun
+  check is reported honestly, not papered over.
+- **Bound the loop.** Track attempts; stop at a stated budget (rounds / time) and
+  summarize what was tried, rather than spiraling and losing track of prior attempts.
+
 ## Severity Classification
 
 All auditing and review agents use a shared severity scale:

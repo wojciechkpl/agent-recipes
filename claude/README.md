@@ -8,7 +8,7 @@ Each agent is a Markdown file with YAML frontmatter that defines a focused subag
 
 ### Option 0: As a plugin (single portable unit — agents + workflows)
 The `claude/` directory is a self-contained Claude Code plugin (`claude/.claude-plugin/plugin.json`)
-that bundles all **23 agents** and **7 workflow commands**. Load it directly:
+that bundles all **28 agents** and **15 workflow commands**. Load it directly:
 ```bash
 claude --plugin-dir /path/to/agent-recipes/claude
 ```
@@ -82,6 +82,10 @@ claude agents
 | `api-designer` | Sonnet | All | — | REST/GraphQL/gRPC design with OpenAPI generation |
 | `dependency-auditor` | Haiku | Read + Bash | — | Vulnerability, license, unused, size analysis |
 | `project-bootstrapper` | Sonnet | All | — | Scaffold new projects with TDD, CI/CD, Docker |
+| `analyst` | Sonnet | Read-only | Project | Read-only codebase investigator — structure, data flow, risks |
+| `data-engineer` | Sonnet | All | User | Data transforms/pipelines, Polars/Rust-first, schema validation |
+| `sre` | Sonnet | All | Project | CI/CD, Dockerfiles, IaC, observability, deployment |
+| `technical-writer` | Sonnet | All | Project | Long-form writing — blogs, RFCs, tutorials, paper drafts |
 
 ### Language Experts
 | Agent | Description |
@@ -91,6 +95,7 @@ claude agents
 | `rust-expert` | Ownership, lifetimes, tokio async, thiserror/anyhow, proptest |
 | `postgresql-expert` | Schema design, query optimization, RLS, partitioning, monitoring |
 | `bash-expert` | Defensive scripting, CI/CD pipelines, bats-core testing |
+| `typescript-expert` | Strict TypeScript, React/Node, ESLint/Prettier, vitest/jest |
 
 ### Specialized Agents
 | Agent | Model | Description |
@@ -124,6 +129,14 @@ the workflow defines the hand-offs and gates. Canonical catalog: `shared/workflo
 | `/wf-perf` | Measure-driven optimization | `performance-optimizer` → `{lang}-expert` → `code-reviewer` |
 | `/wf-new-project` | Scaffold + TDD smoke + docs | `project-bootstrapper` → `test-architect` → `{lang}-expert` → `documentation-agent` |
 | `/wf-ml-research` | Research → reproducible setup | `ai-researcher` → `docker-ml-environment` → `mlflow-tracking` |
+| `/wf-refactor` | Behavior-preserving refactor under a test guard | `analyst` → `test-architect` → `{lang}-expert` → `code-reviewer` |
+| `/wf-upgrade-deps` | Guarded one-at-a-time dependency upgrade | `dependency-auditor` → `{lang}-expert` → `code-reviewer` |
+| `/wf-experiment` | Run + compare an ML hypothesis | `ai-researcher` → `data-engineer` → `{lang}-expert` → `mlflow-tracking` |
+| `/wf-understand` | Map/onboard an unfamiliar codebase | `analyst` → `documentation-agent` |
+| `/wf-spec` | Idea → requirements → design + plan | `ai-researcher` → `architect` |
+| `/wf-release` | Cut a release (gated) | `security-auditor` + `dependency-auditor` → `documentation-agent` → `sre` |
+| `/wf-migrate` | Large-scale codemod | `analyst` → `{lang}-expert` (worktree isolation) → `code-reviewer` |
+| `/wf-db-change` | Schema change with safe migration | `postgresql-expert` → `test-architect` → `code-reviewer` |
 
 ## Conventions
 

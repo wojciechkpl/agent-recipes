@@ -33,6 +33,24 @@
 | `wf-perf` | Measure-driven performance optimization | `performance-optimizer` (baseline) → `{lang}-expert` (optimize) → `code-reviewer` → `performance-optimizer` (re-measure) | optimized result MUST beat baseline or revert |
 | `wf-new-project` | Scaffold a new project | `project-bootstrapper` → `test-architect` (RED smoke) → `{lang}-expert` (GREEN) → `documentation-agent` | toolchain must run; scaffold certified by a smoke test going red→green |
 | `wf-ml-research` | ML research → reproducible setup | `ai-researcher` → `docker-ml-environment` → `mlflow-tracking` | approach must be named before ENV; image must build + import (host-limit → stop, defect → retry ≤3); tracking run must be verifiably logged |
+| `wf-refactor` | Behavior-preserving refactor under a test guard | `analyst` (opt) → `test-architect` (characterization tests) → `{lang}-expert` (refactor) → `code-reviewer` | green suite before AND after; behavior change → revert to checkpoint |
+| `wf-upgrade-deps` | Guarded dependency upgrade | `dependency-auditor` → `{lang}-expert` (one bump at a time) → `code-reviewer` | green baseline required; each dep kept only if suite stays green, else reverted + deferred |
+| `wf-experiment` | Run + compare an ML hypothesis | `ai-researcher` → `data-engineer` → `{lang}-expert` → `mlflow-tracking` (+ `docker-ml-environment`) | falsifiable hypothesis + 1 primary metric; conclusion from logged runs only; honest negative results |
+| `wf-understand` | Map/onboard an unfamiliar codebase | `analyst` (read-only) → `documentation-agent` | analysis must cite `file:line` evidence; read-only except docs |
+| `wf-spec` | Idea → requirements → design + plan | (`ai-researcher` opt) → `architect` | clarify with user, don't invent; design covers every acceptance criterion; feeds `wf-feature` |
+| `wf-release` | Cut a release | `security-auditor` + `dependency-auditor` → `documentation-agent` → (`sre`) → `git-best-practices` | any 🔴 / failing tests BLOCK; no tag/push without user confirmation |
+| `wf-migrate` | Large-scale codemod | `analyst` (discover sites) → `{lang}-expert` (transform, worktree isolation) → `code-reviewer` | green baseline; per-site verify; deferred/skipped sites reported, never silent |
+| `wf-db-change` | Schema change with a safe migration | `postgresql-expert` (forward + rollback) → `test-architect` → (`{lang}-expert`) → `code-reviewer` | rollback must work on scratch DB; no blocking migration on large tables; no prod apply without confirmation |
+
+## New supporting agents
+
+These agents back the workflows above:
+
+- **`analyst`** — read-only codebase investigator (powers `wf-understand`, `wf-migrate`; context for `wf-refactor`).
+- **`data-engineer`** — data transforms/pipelines, Polars/Rust-first (powers `wf-experiment`).
+- **`sre`** — CI/CD, containers, IaC, deployment (powers `wf-release`).
+- **`technical-writer`** — long-form writing (blogs, RFCs, papers); complements `documentation-agent`.
+- **`typescript-expert`** — a `{lang}-expert` for TypeScript/JS (web/Node).
 
 ## TDD agent-separation note
 
@@ -55,3 +73,11 @@ NOT edit any test file").
 - [x] `wf-perf`     (Phase 2)
 - [x] `wf-new-project` (Phase 3)
 - [x] `wf-ml-research`  (Phase 3)
+- [x] `wf-refactor`     (Phase 5)
+- [x] `wf-upgrade-deps` (Phase 5)
+- [x] `wf-experiment`   (Phase 5)
+- [x] `wf-understand`   (Phase 5)
+- [x] `wf-spec`         (Phase 5)
+- [x] `wf-release`      (Phase 5)
+- [x] `wf-migrate`      (Phase 5)
+- [x] `wf-db-change`    (Phase 5)

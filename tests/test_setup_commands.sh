@@ -40,13 +40,17 @@ check "wf-bugfix.md installed"  exists .claude/commands/wf-bugfix.md
 check "agents still installed"  exists .claude/agents/code-reviewer.md
 check "test-architect installed" exists .claude/agents/test-architect.md
 check "architect installed"      exists .claude/agents/architect.md
+check "analyst installed"        exists .claude/agents/analyst.md
+check "data-engineer installed"  exists .claude/agents/data-engineer.md
+check "sre installed"            exists .claude/agents/sre.md
+check "typescript-expert installed" exists .claude/agents/languages/typescript-expert.md
 
 # The glob must install EVERY wf-*.md from source (guards new commands like
 # wf-pre-pr / wf-api / wf-perf added without touching setup.sh).
 src_count=$(find "${REPO}/claude/commands" -maxdepth 1 -name 'wf-*.md' | wc -l | tr -d ' ')
 inst_count=$(find .claude/commands -maxdepth 1 -name 'wf-*.md' | wc -l | tr -d ' ')
 check "all ${src_count} wf-* commands installed" test "$src_count" -eq "$inst_count"
-check "full workflow set present (phase 3)" test "$src_count" -ge 7
+check "full workflow set present (phase 5)" test "$src_count" -ge 15
 
 # ── Uninstall (precise: wf-* only) ────────────────────────────
 "$SETUP" --uninstall >/dev/null
