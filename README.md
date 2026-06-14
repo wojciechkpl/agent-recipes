@@ -1,8 +1,10 @@
 # AI Agent Recipes
 
-A curated collection of AI agent configurations for **Claude Code** (by Anthropic), **Kiro** (by AWS), and **Goose** (by Block). Each agent enforces best practices, TDD, and language-specific conventions.
+A curated collection of AI agent configurations, **built first for [Claude Code](https://code.claude.com) (by Anthropic)** and also available for Kiro (AWS) and Goose (Block). Each agent enforces best practices, TDD, and language-specific conventions.
 
-All three platforms share the same best practices and domain knowledge — only the format differs: Markdown for Claude Code, JSON for Kiro, YAML for Goose.
+> **Claude Code is the primary, recommended platform.** It's the only one with the full **workflow layer** — 15 `/wf-*` orchestration commands that sequence the agents with gates — plus the one-command **plugin** install and the §1–§9 conventions. Kiro (JSON) and Goose (YAML) share the same core agents and standards; only the format differs.
+
+👉 **Jump to [Claude Code setup](#claude-code-anthropic--primary).**
 
 ## Repository Structure
 
@@ -12,6 +14,17 @@ All three platforms share the same best practices and domain knowledge — only 
 ├── shared/                 # Cross-platform standards
 │   ├── severity-scale.md       # Shared 🔴🟠🟡🔵ℹ️ severity classification
 │   └── naming-conventions.md   # Shared naming standards
+│
+├── claude/                 # ★ PRIMARY — Claude Code agents + workflows (Markdown); also a loadable plugin
+│   ├── README.md               # Claude-specific documentation
+│   ├── CONVENTIONS.md          # Global rules for all Claude agents (§1–§9)
+│   ├── .claude-plugin/         # plugin.json — load all agents + workflows in one command
+│   ├── commands/               # 15 workflow slash commands (/wf-*)
+│   └── agents/
+│       ├── *.md                # 15 core agents
+│       ├── languages/*.md      # 6 language experts
+│       ├── specialized/*.md    # 2 specialized agents
+│       └── subrecipes/*.md     # 6 shared subrecipes
 │
 ├── goose/                  # Goose agent recipes (YAML)
 │   ├── README.md               # Goose-specific documentation
@@ -25,17 +38,6 @@ All three platforms share the same best practices and domain knowledge — only 
 │       ├── roles/              # Sub-agent identity definitions
 │       ├── recipes/            # Goose execution configs
 │       └── tools/              # Docker infrastructure scripts
-│
-├── claude/                 # Claude Code agents + workflows (Markdown) — also a loadable plugin
-│   ├── README.md               # Claude-specific documentation
-│   ├── CONVENTIONS.md          # Global rules for all Claude agents
-│   ├── .claude-plugin/         # plugin.json — load all agents + workflows in one command
-│   ├── commands/               # 15 workflow slash commands (/wf-*)
-│   └── agents/
-│       ├── *.md                # 15 core agents
-│       ├── languages/*.md      # 6 language experts
-│       ├── specialized/*.md    # 2 specialized agents
-│       └── subrecipes/*.md     # 6 shared subrecipes
 │
 ├── kiro/                   # Kiro agents (JSON)
 │   ├── README.md               # Kiro-specific documentation
@@ -72,28 +74,7 @@ The setup script supports selective installation and previewing changes:
 ./setup.sh --uninstall         # Remove everything
 ```
 
-### Goose (Block)
-```bash
-# Install Goose
-brew install block/tap/goose
-
-# Run a recipe directly
-goose run --recipe goose/general/code-reviewer.yaml
-
-# With parameters
-goose run --recipe goose/general/debugger.yaml \
-  --params symptom="TypeError in auth middleware" project_path="."
-
-# Language expert
-goose run --recipe goose/general/languages/python-expert.yaml
-
-# ML research
-goose run --recipe goose/general/ai-researcher.yaml
-```
-
-See [goose/TUTORIAL.md](goose/TUTORIAL.md) for 15 detailed use-case walkthroughs.
-
-### Claude Code (Anthropic)
+### Claude Code (Anthropic) — primary
 
 `./setup.sh --claude` installs both the **agents** and the **`/wf-*` workflow commands**
 (user-level). Or load everything at once as a **plugin** — no copying, agents *and*
@@ -128,7 +109,36 @@ claude
 > Debug the failing test in user_service        # → delegates to debugger
 ```
 
+**To force a specific agent** instead of relying on automatic delegation, @-mention it,
+set a session default, or run a workflow (workflows dispatch *named* agents deterministically):
+```
+> @agent-code-reviewer review the auth module   # explicit — this task only
+claude --agent code-reviewer                     # explicit — whole session
+> /wf-feature add a rate limiter                 # workflow → named agents, no guessing
+```
+
 See [claude/README.md](claude/README.md) for full installation and usage details.
+
+### Goose (Block)
+```bash
+# Install Goose
+brew install block/tap/goose
+
+# Run a recipe directly
+goose run --recipe goose/general/code-reviewer.yaml
+
+# With parameters
+goose run --recipe goose/general/debugger.yaml \
+  --params symptom="TypeError in auth middleware" project_path="."
+
+# Language expert
+goose run --recipe goose/general/languages/python-expert.yaml
+
+# ML research
+goose run --recipe goose/general/ai-researcher.yaml
+```
+
+See [goose/TUTORIAL.md](goose/TUTORIAL.md) for 15 detailed use-case walkthroughs.
 
 ---
 
