@@ -37,7 +37,7 @@
 | `wf-upgrade-deps` | Guarded dependency upgrade | `dependency-auditor` → `{lang}-expert` (one bump at a time) → `code-reviewer` | green baseline required; each dep kept only if suite stays green, else reverted + deferred |
 | `wf-experiment` | Run + compare an ML hypothesis | `ai-researcher` → `data-engineer` → `{lang}-expert` → `mlflow-tracking` (+ `docker-ml-environment`) | falsifiable hypothesis + 1 primary metric; conclusion from logged runs only; honest negative results |
 | `wf-understand` | Map/onboard an unfamiliar codebase | `analyst` (read-only) → `documentation-agent` | analysis must cite `file:line` evidence; read-only except docs |
-| `wf-spec` | Idea → requirements → design + plan | (`ai-researcher` opt) → `architect` | clarify with user, don't invent; design covers every acceptance criterion; feeds `wf-feature` |
+| `wf-spec` | Idea → PRD → design + plan | `product-manager` (PRD) → (`ai-researcher` opt) → `architect` | clarify once; PRD states measurable success + MVP scope; design covers every acceptance criterion; feeds `wf-feature` |
 | `wf-release` | Cut a release | `security-auditor` + `dependency-auditor` → `documentation-agent` → (`sre`) → `git-best-practices` | any 🔴 / failing tests BLOCK; no tag/push without user confirmation |
 | `wf-migrate` | Large-scale codemod | `analyst` (discover sites) → `{lang}-expert` (transform, worktree isolation) → `code-reviewer` | green baseline; per-site verify; deferred/skipped sites reported, never silent |
 | `wf-db-change` | Schema change with a safe migration | `postgresql-expert` (forward + rollback) → `test-architect` → (`{lang}-expert`) → `code-reviewer` | rollback must work on scratch DB; no blocking migration on large tables; no prod apply without confirmation |
@@ -46,6 +46,7 @@
 
 These agents back the workflows above:
 
+- **`product-manager`** — PRD, prioritization (RICE/MoSCoW), success metrics (powers `wf-spec`).
 - **`analyst`** — read-only codebase investigator (powers `wf-understand`, `wf-migrate`; context for `wf-refactor`).
 - **`data-engineer`** — data transforms/pipelines, Polars/Rust-first (powers `wf-experiment`).
 - **`sre`** — CI/CD, containers, IaC, deployment (powers `wf-release`).

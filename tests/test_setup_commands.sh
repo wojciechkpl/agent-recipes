@@ -40,6 +40,7 @@ check "wf-bugfix.md installed"  exists .claude/commands/wf-bugfix.md
 check "agents still installed"  exists .claude/agents/code-reviewer.md
 check "test-architect installed" exists .claude/agents/test-architect.md
 check "architect installed"      exists .claude/agents/architect.md
+check "product-manager installed" exists .claude/agents/product-manager.md
 check "analyst installed"        exists .claude/agents/analyst.md
 check "data-engineer installed"  exists .claude/agents/data-engineer.md
 check "sre installed"            exists .claude/agents/sre.md

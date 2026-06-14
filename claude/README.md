@@ -8,7 +8,7 @@ Each agent is a Markdown file with YAML frontmatter that defines a focused subag
 
 ### Option 0: As a plugin (single portable unit — agents + workflows)
 The `claude/` directory is a self-contained Claude Code plugin (`claude/.claude-plugin/plugin.json`)
-that bundles all **28 agents** and **15 workflow commands**. Load it directly:
+that bundles all **29 agents** and **15 workflow commands**. Load it directly:
 ```bash
 claude --plugin-dir /path/to/agent-recipes/claude
 ```
@@ -75,6 +75,7 @@ claude agents
 | `code-reviewer` | Sonnet | Read-only | Project | Code review for quality, security, performance |
 | `test-architect` | Sonnet | All | Project | TDD RED phase — writes failing tests as an independent test author |
 | `architect` | Sonnet | All | Project | System design docs + ordered implementation plans (no code) |
+| `product-manager` | Sonnet | All | Project | PRDs, user stories, acceptance criteria, prioritization (RICE/MoSCoW), success metrics |
 | `debugger` | Inherit | All | Project | Scientific debugging: observe → hypothesize → test → fix |
 | `security-auditor` | Sonnet | Read + Bash | Project | OWASP Top 10, secret detection, CVE scanning |
 | `performance-optimizer` | Inherit | All | Project | Measure → analyze → optimize → validate |
@@ -133,7 +134,7 @@ the workflow defines the hand-offs and gates. Canonical catalog: `shared/workflo
 | `/wf-upgrade-deps` | Guarded one-at-a-time dependency upgrade | `dependency-auditor` → `{lang}-expert` → `code-reviewer` |
 | `/wf-experiment` | Run + compare an ML hypothesis | `ai-researcher` → `data-engineer` → `{lang}-expert` → `mlflow-tracking` |
 | `/wf-understand` | Map/onboard an unfamiliar codebase | `analyst` → `documentation-agent` |
-| `/wf-spec` | Idea → requirements → design + plan | `ai-researcher` → `architect` |
+| `/wf-spec` | Idea → PRD → design + plan | `product-manager` (PRD) → `ai-researcher` → `architect` |
 | `/wf-release` | Cut a release (gated) | `security-auditor` + `dependency-auditor` → `documentation-agent` → `sre` |
 | `/wf-migrate` | Large-scale codemod | `analyst` → `{lang}-expert` (worktree isolation) → `code-reviewer` |
 | `/wf-db-change` | Schema change with safe migration | `postgresql-expert` → `test-architect` → `code-reviewer` |

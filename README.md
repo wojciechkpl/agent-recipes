@@ -32,7 +32,7 @@ All three platforms share the same best practices and domain knowledge — only 
 │   ├── .claude-plugin/         # plugin.json — load all agents + workflows in one command
 │   ├── commands/               # 15 workflow slash commands (/wf-*)
 │   └── agents/
-│       ├── *.md                # 14 core agents
+│       ├── *.md                # 15 core agents
 │       ├── languages/*.md      # 6 language experts
 │       ├── specialized/*.md    # 2 specialized agents
 │       └── subrecipes/*.md     # 6 shared subrecipes
@@ -134,7 +134,7 @@ See [claude/README.md](claude/README.md) for full installation and usage details
 
 ## Agent Catalog
 
-### Core Agents (16)
+### Core Agents (17)
 | Agent | Goose | Claude | Purpose |
 |-------|-------|--------|---------|
 | Code Reviewer | `general/code-reviewer.yaml` | `agents/code-reviewer.md` | Correctness, security, performance, maintainability review |
@@ -149,6 +149,7 @@ See [claude/README.md](claude/README.md) for full installation and usage details
 | Project Bootstrapper | `general/project-bootstrapper.yaml` | `agents/project-bootstrapper.md` | Scaffold projects with TDD, CI/CD, Docker, linting |
 | AI/ML Researcher | `general/ai-researcher.yaml` | `agents/specialized/ai-researcher.md` | Literature review, ML design, math formulation, MLflow |
 | UX Designer | `general/ux-designer.yaml` | `agents/specialized/ux-designer.md` | Journey mapping, wireframes, design systems, WCAG 2.2 |
+| Product Manager | — | `agents/product-manager.md` | PRDs, user stories, acceptance criteria, prioritization (RICE/MoSCoW), success metrics |
 | Analyst | — | `agents/analyst.md` | Read-only codebase investigator — structure, data flow, risks |
 | Data Engineer | — | `agents/data-engineer.md` | Data transforms/pipelines, Polars/Rust-first, schema validation |
 | SRE / DevOps | — | `agents/sre.md` | CI/CD, Dockerfiles, IaC, observability, deployment |
@@ -232,7 +233,7 @@ Then just type the command in Claude Code:
 
 | Command | What it does | Agents it orchestrates |
 |---------|--------------|------------------------|
-| `/wf-spec` | Idea → requirements → design + plan | `ai-researcher` → `architect` (feeds `/wf-feature`) |
+| `/wf-spec` | Idea → PRD → design + plan | `product-manager` (PRD) → `ai-researcher` → `architect` (feeds `/wf-feature`) |
 | `/wf-api` | Contract-first API build | `api-designer` → `test-architect` → `{lang}-expert` → `code-reviewer` → `documentation-agent` |
 | `/wf-new-project` | Scaffold + prove the harness + docs | `project-bootstrapper` → `test-architect` → `{lang}-expert` → `documentation-agent` |
 | `/wf-db-change` | Schema change with a safe, tested migration | `postgresql-expert` (forward+rollback) → `test-architect` → `code-reviewer` |
@@ -261,7 +262,7 @@ before the next — that’s where the gates earn their keep.
 
 | Your situation | Use |
 |----------------|-----|
-| Still a rough idea — need requirements + a design before coding | `/wf-spec` |
+| Still a rough idea — need a PRD (priorities + success metrics) + a design before coding | `/wf-spec` |
 | “Add feature X” and you want tests-first with a review gate | `/wf-feature` |
 | Something is broken and you want a regression test to lock the fix | `/wf-bugfix` |
 | Clean up structure without changing behavior, safely | `/wf-refactor` |
