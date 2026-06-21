@@ -21,6 +21,7 @@ A curated collection of AI agent configurations, **built first for [Claude Code]
 │   ├── .claude-plugin/         # plugin.json — load all agents + workflows in one command
 │   ├── commands/               # 16 workflow slash commands (/wf-*)
 │   ├── autonomous-mode.sh      # optional broad-permission toggle (+ settings.autonomous.json)
+│   ├── AUTONOMOUS-MODE.md       # how to use autonomous mode (on/off, scopes, safety)
 │   └── agents/
 │       ├── *.md                # 15 core agents
 │       ├── languages/*.md      # 6 language experts

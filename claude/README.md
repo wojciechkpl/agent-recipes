@@ -185,6 +185,10 @@ claude/autonomous-mode.sh status [--project]
   (or the stronger `claude --dangerously-skip-permissions`); in-session, Shift+Tab
   cycles permission modes.
 
+**Full guide:** [`AUTONOMOUS-MODE.md`](AUTONOMOUS-MODE.md) — global vs per-project, the
+three ways to enable, what's allowed/denied, how the merge+backup works, safety, and
+troubleshooting.
+
 ## Conventions
 
 See `CONVENTIONS.md` for global rules enforced across all agents:
