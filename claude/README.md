@@ -163,6 +163,28 @@ Enable it with `.claude/asana.json` (or `ASANA_PROJECT_GID` / `ASANA_PROJECT_NAM
 task per run. Status uses a single-select **"Status"** custom field if the project has
 one, else sections. Requires the Asana MCP server connected.
 
+## Autonomous mode (optional)
+
+A broad-but-safe permission overlay that cuts mid-session permission prompts.
+**Opt-in and reversible** — off by default.
+
+```bash
+claude/autonomous-mode.sh on              # GLOBAL (~/.claude — all projects)
+claude/autonomous-mode.sh on --project    # PROJECT (./.claude — current repo only)
+claude/autonomous-mode.sh off [--project]
+claude/autonomous-mode.sh status [--project]
+```
+
+- Merges `claude/settings.autonomous.json` (`defaultMode: acceptEdits` + a broad
+  dev-toolchain allow-list) into the target `settings.json`, preserving your other keys
+  (model, statusLine, plugins); the original is backed up and restored on `off`.
+- Still **denied** even when on: `sudo`, catastrophic `rm -rf` of system/home/`.git`,
+  `git push --force`, `mkfs`/`dd`, and reading private keys (`*.pem`, `id_rsa`).
+- No secrets in the committed profile. Takes effect on the **next** session.
+- Per-session alternative (no files): `claude --permission-mode acceptEdits`
+  (or the stronger `claude --dangerously-skip-permissions`); in-session, Shift+Tab
+  cycles permission modes.
+
 ## Conventions
 
 See `CONVENTIONS.md` for global rules enforced across all agents:
