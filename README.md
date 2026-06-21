@@ -34,7 +34,7 @@ A curated collection of AI agent configurations, **built first for [Claude Code]
 │   │   ├── *.yaml              # 17 core recipes
 │   │   ├── languages/*.yaml    # 6 language experts
 │   │   ├── subrecipes/*.yaml   # 11 shared subrecipes
-│   │   └── workflows/*.yaml    # 15 workflow recipes (Goose renderings of /wf-*; /wf-fanout is Claude-only so far)
+│   │   └── workflows/*.yaml    # 16 workflow recipes (Goose renderings of /wf-*)
 │   └── coding_agent_context/   # Portable orchestration framework
 │       ├── missions/           # Step-by-step workflow instructions
 │       ├── roles/              # Sub-agent identity definitions
