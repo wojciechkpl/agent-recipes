@@ -21,6 +21,15 @@
   specialists via the `Agent` tool, one phase at a time, and owns the gate logic.
 - A "gate" is a stop/loop condition the orchestrator enforces between phases
   (e.g. "tests must be red before GREEN", "code-reviewer must APPROVE").
+- **Commit each phase's verified output before starting the next.** The orchestrator
+  owns the commits; specialist agents leave changes in the tree (they don't commit).
+  Don't let several phases' uncommitted changes accumulate — a branch switch or a
+  parallel agent can scramble or lose them.
+- **Isolate parallel file-mutating agents.** When a phase fans out to agents that edit
+  files concurrently (or another session shares the clone), give each its own
+  `git worktree` (the `Agent` tool's `isolation: "worktree"`) or guarantee
+  non-overlapping file sets. Verify `git branch --show-current` before every commit/push.
+  See `git-best-practices` → *Concurrent Sessions & Worktree Isolation*.
 
 ## Catalog
 

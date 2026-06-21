@@ -45,6 +45,36 @@ Examples:
 2. Generate PR title from commit history (Conventional Commit style)
 3. Generate PR body with: Summary, Changes, Testing, Checklist
 4. Check for unresolved TODOs, missing test coverage, files that should update together
+5. **Reconcile with the base before expecting green.** PR CI lints/tests the *merge*
+   of your branch with the current base, not your branch alone. If the base has
+   advanced (another contributor merged), `git merge origin/<base>` into your branch
+   first and fix any debt that merge surfaces (unsorted imports, unformatted files,
+   new failing tests) — a branch that was green in isolation can still fail PR CI
+   because of code that landed on the base after you branched.
+
+### Concurrent Sessions & Worktree Isolation
+When more than one agent/session may touch the **same clone** (parallel workflows,
+a teammate, or another AI session), a shared working tree is unsafe: another
+`git checkout`/`git switch` silently retargets *your* branch, and a branch switch
+resets working-tree files that have no uncommitted diff — committed work survives on
+the branch ref, but **uncommitted edits can be scrambled or lost**.
+
+1. **Isolate by default.** Give each concurrent line of work its own
+   `git worktree add <path> <branch>` (or the `Agent` tool's `isolation: "worktree"`).
+   A worktree is immune to branch switches in the main clone. Caveats: a fresh
+   worktree has no `.env` and no installed deps — copy/recreate them before running
+   hooks/tests (an env-dependent pre-commit hook, e.g. OpenAPI generation, fails
+   without config).
+2. **Verify the branch before every git op.** `git branch --show-current` must equal
+   your expected branch immediately before `add`/`commit`/`push`. Abort if it moved.
+3. **Commit promptly; don't accumulate.** When orchestrating parallel file-mutating
+   agents, commit (or stash) each stream's output as soon as it's verified — never
+   leave several agents' uncommitted changes co-resident in one tree.
+4. **Recover, don't panic.** If branches collided: your commits are safe on their
+   branch ref. `git worktree add /tmp/recover <your-branch>` for a clean checkout,
+   re-apply any salvageable uncommitted work there (copy intact files / re-run the
+   lost step), then commit/push from the worktree. Never `reset --hard` or
+   blanket-`checkout --` shared files another session may be mid-edit on.
 
 ### Branch Naming Convention
 

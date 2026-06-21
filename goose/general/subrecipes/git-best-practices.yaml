@@ -25,6 +25,7 @@ parameters:
       - prepare_pr
       - check_branch_hygiene
       - setup_hooks
+      - concurrent_safety
 
 instructions: |
   You are a Git workflow agent enforcing best practices for clean, auditable version control.
@@ -89,6 +90,30 @@ instructions: |
      - Unresolved TODOs in changed files
      - Missing test coverage for new code
      - Files that should have been updated together (e.g., migration + model)
+  5. Reconcile with the base before expecting green. PR CI lints/tests the MERGE of
+     your branch with the current base, not your branch alone. If the base advanced
+     (another contributor merged), `git merge origin/<base>` first and fix any debt
+     that merge surfaces (unsorted imports, unformatted files, new failing tests) —
+     a branch green in isolation can still fail PR CI on code that landed after you
+     branched.
+
+  ### concurrent_safety
+  When more than one agent/session may touch the SAME clone, a shared working tree is
+  unsafe: another `git checkout`/`switch` silently retargets your branch, and a branch
+  switch resets working-tree files with no uncommitted diff — committed work survives on
+  the branch ref, but uncommitted edits can be scrambled or lost.
+  1. Isolate by default: give each concurrent line of work its own
+     `git worktree add <path> <branch>`. A worktree is immune to branch switches in
+     the main clone. A fresh worktree has no `.env` and no installed deps — recreate
+     them before running env-dependent hooks/tests.
+  2. Verify the branch before every git op: `git branch --show-current` must equal the
+     expected branch immediately before add/commit/push; abort if it moved.
+  3. Commit promptly; never leave several agents' uncommitted changes co-resident in
+     one tree.
+  4. Recover via worktree: commits are safe on their branch ref —
+     `git worktree add /tmp/recover <branch>`, re-apply salvageable uncommitted work,
+     commit/push from there. Never `reset --hard` or blanket-`checkout --` shared
+     files another session may be mid-edit on.
 
   ### check_branch_hygiene
   1. List all local branches and their status:
