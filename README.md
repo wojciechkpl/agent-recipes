@@ -2,7 +2,7 @@
 
 A curated collection of AI agent configurations, **built first for [Claude Code](https://code.claude.com) (by Anthropic)** and also available for Kiro (AWS) and Goose (Block). Each agent enforces best practices, TDD, and language-specific conventions.
 
-> **Claude Code is the primary, recommended platform.** It's the only one with the full **workflow layer** — 15 `/wf-*` orchestration commands that sequence the agents with gates — plus the one-command **plugin** install and the §1–§9 conventions. Kiro (JSON) and Goose (YAML) share the same core agents and standards; only the format differs.
+> **Claude Code is the primary, recommended platform.** It's the only one with the full **workflow layer** — 16 `/wf-*` orchestration commands that sequence the agents with gates — plus the one-command **plugin** install and the §1–§9 conventions. Kiro (JSON) and Goose (YAML) share the same core agents and standards; only the format differs.
 
 👉 **Jump to [Claude Code setup](#claude-code-anthropic--primary).**
 
@@ -19,7 +19,8 @@ A curated collection of AI agent configurations, **built first for [Claude Code]
 │   ├── README.md               # Claude-specific documentation
 │   ├── CONVENTIONS.md          # Global rules for all Claude agents (§1–§9)
 │   ├── .claude-plugin/         # plugin.json — load all agents + workflows in one command
-│   ├── commands/               # 15 workflow slash commands (/wf-*)
+│   ├── commands/               # 16 workflow slash commands (/wf-*)
+│   ├── autonomous-mode.sh      # optional broad-permission toggle (+ settings.autonomous.json)
 │   └── agents/
 │       ├── *.md                # 15 core agents
 │       ├── languages/*.md      # 6 language experts
@@ -33,7 +34,7 @@ A curated collection of AI agent configurations, **built first for [Claude Code]
 │   │   ├── *.yaml              # 17 core recipes
 │   │   ├── languages/*.yaml    # 6 language experts
 │   │   ├── subrecipes/*.yaml   # 11 shared subrecipes
-│   │   └── workflows/*.yaml    # 15 workflow recipes (Goose renderings of /wf-*)
+│   │   └── workflows/*.yaml    # 15 workflow recipes (Goose renderings of /wf-*; /wf-fanout is Claude-only so far)
 │   └── coding_agent_context/   # Portable orchestration framework
 │       ├── missions/           # Step-by-step workflow instructions
 │       ├── roles/              # Sub-agent identity definitions
@@ -231,7 +232,7 @@ Then just type the command in Claude Code:
 /wf-bugfix median() returns the wrong value for even-length lists
 ```
 
-### The 15 workflows
+### The 16 workflows
 
 **Core dev loop**
 
@@ -260,6 +261,7 @@ Then just type the command in Claude Code:
 | `/wf-migrate` | Large-scale codemod | `analyst` (discover) → `{lang}-expert` (worktree isolation) → `code-reviewer` |
 | `/wf-upgrade-deps` | Guarded one-at-a-time dependency upgrade | `dependency-auditor` → `{lang}-expert` → `code-reviewer` |
 | `/wf-release` | Cut a release (gated, confirmed) | `security-auditor` + `dependency-auditor` → `documentation-agent` → `sre` → `git-best-practices` |
+| `/wf-fanout` | Run a task as parallel, isolated agent streams | decompose → `Agent` ×N (non-overlapping files / worktree) → per-stream verify+commit → reconcile |
 
 **ML**
 

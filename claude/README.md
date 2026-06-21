@@ -8,7 +8,7 @@ Each agent is a Markdown file with YAML frontmatter that defines a focused subag
 
 ### Option 0: As a plugin (single portable unit — agents + workflows)
 The `claude/` directory is a self-contained Claude Code plugin (`claude/.claude-plugin/plugin.json`)
-that bundles all **30 agents** and **15 workflow commands**. Load it directly:
+that bundles all **30 agents** and **16 workflow commands**. Load it directly:
 ```bash
 claude --plugin-dir /path/to/agent-recipes/claude
 ```
