@@ -139,6 +139,7 @@ the workflow defines the hand-offs and gates. Canonical catalog: `shared/workflo
 | `/wf-release` | Cut a release (gated) | `security-auditor` + `dependency-auditor` → `documentation-agent` → `sre` |
 | `/wf-migrate` | Large-scale codemod | `analyst` → `{lang}-expert` (worktree isolation) → `code-reviewer` |
 | `/wf-db-change` | Schema change with safe migration | `postgresql-expert` → `test-architect` → `code-reviewer` |
+| `/wf-fanout` | Run a task as parallel, isolated agent streams | decompose → `Agent` ×N (non-overlapping files / worktree) → per-stream verify+commit → reconcile |
 
 ### Asana sync (optional)
 

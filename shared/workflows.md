@@ -50,6 +50,7 @@
 | `wf-release` | Cut a release | `security-auditor` + `dependency-auditor` → `documentation-agent` → (`sre`) → `git-best-practices` | any 🔴 / failing tests BLOCK; no tag/push without user confirmation |
 | `wf-migrate` | Large-scale codemod | `analyst` (discover sites) → `{lang}-expert` (transform, worktree isolation) → `code-reviewer` | green baseline; per-site verify; deferred/skipped sites reported, never silent |
 | `wf-db-change` | Schema change with a safe migration | `postgresql-expert` (forward + rollback) → `test-architect` → (`{lang}-expert`) → `code-reviewer` | rollback must work on scratch DB; no blocking migration on large tables; no prod apply without confirmation |
+| `wf-fanout` | Run a task as parallel, isolated agent streams | decompose → `Agent` ×N in parallel (non-overlapping files or `isolation: worktree`) → per-stream verify+commit → reconcile (+ optional `wf-pre-pr`) | streams touch non-overlapping files; verify `git branch --show-current` before each commit; commit each stream before the next; merge base in before expecting CI green |
 
 ## New supporting agents
 
