@@ -1,0 +1,101 @@
+version: "1.0.0"
+title: "WF: Parallel Fan-Out"
+description: "Run a task as parallel, isolated agent streams: decompose into non-overlapping streams → dispatch concurrently → verify + commit each stream before the next → reconcile with base. The risks are streams clobbering each other and uncommitted work lost to a branch switch, so isolate (non-overlapping files or worktrees), commit per stream, and verify the branch before every git op."
+
+parameters:
+  - key: task
+    input_type: string
+    requirement: required
+    description: "A task that splits into independent parallel streams, e.g. 'fix these 6 unrelated bugs across backend + mobile'"
+
+instructions: |
+  You are the ORCHESTRATOR. Decompose the task into independent streams, run them in
+  parallel, and land each result without the streams clobbering each other. You own all
+  git operations; the sub-recipe specialists edit files but NEVER commit. See the
+  `git_best_practices` sub-recipe → "concurrent_safety".
+
+  ## Task: {{ task }}
+
+  ## Sub-recipes you will dispatch
+  - matching language experts (`python_expert`, `typescript_expert`, `rust_expert`,
+    `flutter_expert`, `postgresql_expert`, `bash_expert`) or other specialists — one per
+    stream, each scoped to a non-overlapping file set.
+  - `code_reviewer` — review the consolidated change.
+  - `git_best_practices` — branch hygiene + concurrent-safety guidance.
+
+  ## Steps (enforce every GATE faithfully)
+  1. **DECOMPOSE.** Split the task into 2–N streams that touch NON-OVERLAPPING file sets.
+     State each stream's scope + files. If streams must touch the same files, serialize
+     them or give each an isolated worktree (step 2). If it doesn't decompose cleanly,
+     STOP — this isn't a fan-out; use wf_feature / wf_bugfix instead.
+  2. **ISOLATE.** Create/confirm the branch (`git branch --show-current`). If any streams
+     overlap files, or another session shares this clone, run each in its own
+     `git worktree`; otherwise non-overlapping streams can share the tree.
+  3. **DISPATCH (parallel).** Launch all streams concurrently. Each specialist gets its
+     scope + this instruction: "Edit only your files. Write a regression test per change.
+     Run the relevant tests/linters. Do NOT commit — leave changes in the tree; report
+     files changed + results."
+  4. **VERIFY + COMMIT each stream.** As each returns: re-run its tests, confirm
+     `git branch --show-current` is still your branch, then commit THAT stream's explicit
+     paths with a Conventional Commit. Per stream — never let several streams' uncommitted
+     changes pile up. **GATE:** a stream that failed verification loops back to its
+     specialist with the failure output before you commit it.
+  5. **RECONCILE.** Once all streams are committed, run the full suite. `git merge
+     origin/<base>` if the base advanced and fix any debt the merge surfaces (CI lints the
+     merge, not your branch alone). Optionally run wf_pre_pr. **GATE:** all green + no 🔴
+     before opening the PR.
+  6. **REPORT.** Per stream: files, tests, commit. Plus the reconcile result and final
+     green status.
+
+  ## Recovery
+  If a branch collision scrambled the tree (a shared-clone hazard): committed work is safe
+  on the branch ref. `git worktree add /tmp/recover <branch>` for a clean checkout,
+  re-apply salvageable uncommitted work there, commit/push from the worktree. Never
+  `reset --hard` or blanket-`checkout --` files another session may be mid-edit on.
+
+  ## Asana sync (optional)
+  If an Asana project is configured, dispatch the `asana_sync` sub_recipe: `start` at
+  DECOMPOSE, a `comment` per stream committed, `done` at REPORT. Best-effort and
+  non-blocking — a silent no-op if Asana isn't configured or reachable.
+
+prompt: "Run as a parallel fan-out: {{ task }}"
+
+extensions:
+  - type: builtin
+    name: developer
+    description: "File system + git access for decomposition, dispatch, per-stream commits, and reconcile"
+    timeout: 600
+    bundled: true
+
+sub_recipes:
+  - name: "python_expert"
+    path: "../languages/python-expert.yaml"
+    description: "Implement a stream (run if the stream is Python)"
+  - name: "typescript_expert"
+    path: "../languages/typescript-expert.yaml"
+    description: "Implement a stream (run if the stream is TS/JS)"
+  - name: "rust_expert"
+    path: "../languages/rust-expert.yaml"
+    description: "Implement a stream (run if the stream is Rust)"
+  - name: "flutter_expert"
+    path: "../languages/flutter-expert.yaml"
+    description: "Implement a stream (run if the stream is Dart/Flutter)"
+  - name: "postgresql_expert"
+    path: "../languages/postgresql-expert.yaml"
+    description: "Implement a stream (run if the stream touches the DB layer)"
+  - name: "bash_expert"
+    path: "../languages/bash-expert.yaml"
+    description: "Implement a stream (run if the stream touches shell/CI scripts)"
+  - name: "code_reviewer"
+    path: "../code-reviewer.yaml"
+    description: "Review the consolidated diff across all streams"
+  - name: "git_best_practices"
+    path: "../subrecipes/git-best-practices.yaml"
+    description: "Branch hygiene + concurrent-session/worktree safety"
+  - name: "asana_sync"
+    path: "../subrecipes/asana-sync.yaml"
+    description: "Optional, best-effort sync of run status to an Asana task"
+
+settings:
+  temperature: 0.1
+  max_turns: 80

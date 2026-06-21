@@ -8,7 +8,7 @@ Each agent is a Markdown file with YAML frontmatter that defines a focused subag
 
 ### Option 0: As a plugin (single portable unit — agents + workflows)
 The `claude/` directory is a self-contained Claude Code plugin (`claude/.claude-plugin/plugin.json`)
-that bundles all **30 agents** and **15 workflow commands**. Load it directly:
+that bundles all **30 agents** and **16 workflow commands**. Load it directly:
 ```bash
 claude --plugin-dir /path/to/agent-recipes/claude
 ```
@@ -139,6 +139,7 @@ the workflow defines the hand-offs and gates. Canonical catalog: `shared/workflo
 | `/wf-release` | Cut a release (gated) | `security-auditor` + `dependency-auditor` → `documentation-agent` → `sre` |
 | `/wf-migrate` | Large-scale codemod | `analyst` → `{lang}-expert` (worktree isolation) → `code-reviewer` |
 | `/wf-db-change` | Schema change with safe migration | `postgresql-expert` → `test-architect` → `code-reviewer` |
+| `/wf-fanout` | Run a task as parallel, isolated agent streams | decompose → `Agent` ×N (non-overlapping files / worktree) → per-stream verify+commit → reconcile |
 
 ### Asana sync (optional)
 
@@ -161,6 +162,32 @@ Enable it with `.claude/asana.json` (or `ASANA_PROJECT_GID` / `ASANA_PROJECT_NAM
 **PR link** on completion — so you get a real *planned-vs-done* view instead of a new
 task per run. Status uses a single-select **"Status"** custom field if the project has
 one, else sections. Requires the Asana MCP server connected.
+
+## Autonomous mode (optional)
+
+A broad-but-safe permission overlay that cuts mid-session permission prompts.
+**Opt-in and reversible** — off by default.
+
+```bash
+claude/autonomous-mode.sh on              # GLOBAL (~/.claude — all projects)
+claude/autonomous-mode.sh on --project    # PROJECT (./.claude — current repo only)
+claude/autonomous-mode.sh off [--project]
+claude/autonomous-mode.sh status [--project]
+```
+
+- Merges `claude/settings.autonomous.json` (`defaultMode: acceptEdits` + a broad
+  dev-toolchain allow-list) into the target `settings.json`, preserving your other keys
+  (model, statusLine, plugins); the original is backed up and restored on `off`.
+- Still **denied** even when on: `sudo`, catastrophic `rm -rf` of system/home/`.git`,
+  `git push --force`, `mkfs`/`dd`, and reading private keys (`*.pem`, `id_rsa`).
+- No secrets in the committed profile. Takes effect on the **next** session.
+- Per-session alternative (no files): `claude --permission-mode acceptEdits`
+  (or the stronger `claude --dangerously-skip-permissions`); in-session, Shift+Tab
+  cycles permission modes.
+
+**Full guide:** [`AUTONOMOUS-MODE.md`](AUTONOMOUS-MODE.md) — global vs per-project, the
+three ways to enable, what's allowed/denied, how the merge+backup works, safety, and
+troubleshooting.
 
 ## Conventions
 
