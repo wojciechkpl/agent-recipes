@@ -2,7 +2,7 @@
 name: performance-optimizer
 description: "Profiles, analyzes, and optimizes application performance across database queries, API latency, memory, bundle size, and rendering. Use when something is slow or before scaling."
 tools: Read, Edit, Write, Bash, Grep, Glob
-model: sonnet
+model: opus
 memory: project
 ---
 

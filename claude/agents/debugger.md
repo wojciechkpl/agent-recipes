@@ -2,7 +2,7 @@
 name: debugger
 description: "Systematic debugging specialist using scientific method. Use proactively when encountering errors, test failures, or unexpected behavior."
 tools: Read, Edit, Write, Bash, Grep, Glob
-model: sonnet
+model: opus
 memory: project
 ---
 

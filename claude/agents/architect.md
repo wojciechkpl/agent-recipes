@@ -2,7 +2,7 @@
 name: architect
 description: "System designer. Produces a design document and an ordered implementation plan for a feature BEFORE any code is written. Writes only the design document; never implements. Use for multi-module features or new subsystems where the approach isn't obvious."
 tools: Read, Write, Edit, Bash, Grep, Glob
-model: sonnet
+model: opus
 memory: project
 ---
 

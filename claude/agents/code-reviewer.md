@@ -2,7 +2,7 @@
 name: code-reviewer
 description: "Expert code reviewer for quality, security, performance, and maintainability. Use proactively after writing or modifying code, or before merging PRs."
 tools: Read, Grep, Glob, Bash
-model: sonnet
+model: opus
 memory: project
 ---
 

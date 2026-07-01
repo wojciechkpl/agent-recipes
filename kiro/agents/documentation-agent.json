@@ -1,7 +1,7 @@
 {
   "name": "documentation-agent",
   "description": "Generates and maintains documentation: API docs, inline code docs, architecture diagrams (Mermaid), READMEs, changelogs, and onboarding guides. Use when code needs documentation.",
-  "model": "claude-haiku-4",
+  "model": "claude-opus-4",
   "tools": [
     "read",
     "shell",

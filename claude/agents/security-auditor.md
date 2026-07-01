@@ -2,7 +2,7 @@
 name: security-auditor
 description: "Comprehensive security auditor for vulnerability scanning, secret detection, OWASP Top 10 review, and infrastructure config review. Use before releases or after adding auth/payment features."
 tools: Read, Grep, Glob, Bash
-model: sonnet
+model: opus
 memory: project
 ---
 

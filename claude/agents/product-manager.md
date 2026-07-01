@@ -2,7 +2,7 @@
 name: product-manager
 description: "Defines the what / why / for-whom: PRDs, user stories, acceptance criteria, prioritization (RICE/MoSCoW), and success metrics. Surfaces scope tradeoffs instead of silently cutting. Use to turn a rough idea or a backlog into a prioritized, measurable product spec — before design or build."
 tools: Read, Write, Edit, Grep, Glob
-model: sonnet
+model: opus
 memory: project
 ---
 

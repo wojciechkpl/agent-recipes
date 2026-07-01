@@ -1,7 +1,7 @@
 {
   "name": "performance-optimizer",
   "description": "Profiles, analyzes, and optimizes application performance across database queries, API latency, memory, bundle size, and rendering. Use when something is slow or before scaling.",
-  "model": "claude-sonnet-4",
+  "model": "claude-opus-4",
   "tools": [
     "read",
     "shell",
