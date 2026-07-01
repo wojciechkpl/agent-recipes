@@ -1,7 +1,7 @@
 {
   "name": "typescript-expert",
   "description": "Modern TypeScript specialist — strict type safety, Node and React/web, ESLint/Prettier, vitest/jest testing. Use for any TypeScript/JavaScript implementation, refactor, or review.",
-  "model": "claude-sonnet-4",
+  "model": "claude-sonnet-5",
   "tools": [
     "read",
     "shell",

@@ -1,7 +1,7 @@
 {
   "name": "data-engineer",
   "description": "Builds data transforms and pipelines (ETL/ELT), schema validation, and dataset profiling. Prefers fast columnar engines (Polars/Rust) for pure transforms; uses pandas/PyArrow where ecosystem demands. Use for data-cleaning, feature pipelines, and dataset prep.",
-  "model": "claude-sonnet-4",
+  "model": "claude-sonnet-5",
   "tools": [
     "read",
     "shell",

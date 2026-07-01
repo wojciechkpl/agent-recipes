@@ -1,7 +1,7 @@
 {
   "name": "debugger",
   "description": "Systematic debugging specialist using scientific method. Use proactively when encountering errors, test failures, or unexpected behavior.",
-  "model": "claude-opus-4",
+  "model": "claude-opus-4-8",
   "tools": [
     "read",
     "shell",

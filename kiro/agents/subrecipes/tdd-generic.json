@@ -1,7 +1,7 @@
 {
   "name": "tdd-generic",
   "description": "Language-agnostic TDD workflow enforcing Red-Green-Refactor. Referenced by all code-writing agents.",
-  "model": "claude-sonnet-4",
+  "model": "claude-sonnet-5",
   "tools": [
     "read",
     "shell",

@@ -1,7 +1,7 @@
 {
   "name": "test-architect",
   "description": "Writes failing tests that specify desired behavior — the RED phase of TDD. Use as the test AUTHOR so the implementer is a different agent (independent specification, not a rubber stamp). Only creates/edits test files; never writes implementation.",
-  "model": "claude-sonnet-4",
+  "model": "claude-sonnet-5",
   "tools": [
     "read",
     "shell",

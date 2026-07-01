@@ -1,7 +1,7 @@
 {
   "name": "mlflow-tracking",
   "description": "Integrates MLflow for ML experiment tracking, model registry, hyperparameter optimization. Use for ML projects needing reproducible experiments.",
-  "model": "claude-sonnet-4",
+  "model": "claude-sonnet-5",
   "tools": [
     "read",
     "shell",

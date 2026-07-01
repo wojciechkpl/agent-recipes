@@ -1,7 +1,7 @@
 {
   "name": "docker-ml-environment",
   "description": "Sets up containerized ML development environments with GPU support, MLflow tracking, multi-stage builds. Use for ML project infrastructure.",
-  "model": "claude-sonnet-4",
+  "model": "claude-sonnet-5",
   "tools": [
     "read",
     "shell",

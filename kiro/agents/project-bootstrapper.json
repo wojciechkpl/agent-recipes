@@ -1,7 +1,7 @@
 {
   "name": "project-bootstrapper",
   "description": "Scaffolds new projects with production-ready structure: directory layout, testing, CI/CD, linting, Docker, and documentation. Use when starting a new project.",
-  "model": "claude-sonnet-4",
+  "model": "claude-sonnet-5",
   "tools": [
     "read",
     "shell",

@@ -1,7 +1,7 @@
 {
   "name": "dependency-auditor",
   "description": "Audits project dependencies for vulnerabilities, license compliance, outdated packages, unused dependencies, and size analysis. Use before releases or periodically.",
-  "model": "claude-opus-4",
+  "model": "claude-opus-4-8",
   "tools": [
     "read",
     "shell"

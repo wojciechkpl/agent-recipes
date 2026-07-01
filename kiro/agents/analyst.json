@@ -1,7 +1,7 @@
 {
   "name": "analyst",
   "description": "Read-only codebase investigator. Maps structure, data flow, and risks and produces a structured analysis report for downstream agents or humans. Never modifies code. Use to understand an unfamiliar codebase or gather context before designing/changing.",
-  "model": "claude-sonnet-4",
+  "model": "claude-sonnet-5",
   "tools": [
     "read",
     "shell"

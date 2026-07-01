@@ -1,7 +1,7 @@
 {
   "name": "ux-designer",
   "description": "UX Designer specialist for user research, journey mapping, wireframing, interaction design, design systems, accessibility (WCAG 2.2), and responsive design. Use when designing or improving user experiences.",
-  "model": "claude-sonnet-4",
+  "model": "claude-sonnet-5",
   "tools": [
     "read",
     "shell",

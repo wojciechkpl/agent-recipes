@@ -1,7 +1,7 @@
 {
   "name": "sre",
   "description": "Infrastructure, CI/CD, containers, and deployment specialist. Writes Dockerfiles, GitHub Actions/CI pipelines, IaC (Terraform/compose), and observability config. Use for build/deploy/runtime concerns, reproducible environments, and release automation.",
-  "model": "claude-sonnet-4",
+  "model": "claude-sonnet-5",
   "tools": [
     "read",
     "shell",

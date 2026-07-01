@@ -154,7 +154,7 @@ You should see the exploration brief with data sources, environment settings, an
 #### Step 1.5 — Launch the mission
 
 ```bash
-goose run --model us.anthropic.claude-opus-4-6-v1 -s \
+goose run --model us.anthropic.claude-opus-4-8-v1 -s \
     --recipe coding_agent_context/recipes/mission_data_exploration.yaml \
     --params exploration_name="${FEATURE}"
 ```
@@ -246,7 +246,7 @@ You should see the YAML-formatted requirements with topic, search_topics, search
 #### Step 2.5 — Launch the reference compilation mission
 
 ```bash
-goose run --model us.anthropic.claude-opus-4-6-v1 -s \
+goose run --model us.anthropic.claude-opus-4-8-v1 -s \
     --recipe ./admin_agent_context/recipes/mission_compile_references.yaml \
     --params run_dir="${RUN_DIR}"
 ```
@@ -284,7 +284,7 @@ admin_agent_context/specs/research/20260226_transformer_architecture/
 > A great way to do this is to **use Goose itself** to explore the setup interactively. Open a new terminal and run:
 >
 > ```bash
-> goose run --model us.anthropic.claude-opus-4-6-v1 -s -t \
+> goose run --model us.anthropic.claude-opus-4-8-v1 -s -t \
 > "In ./coding_agent_context you can find my current agent setup \
 > It is meant as a setup that can be dropped into any code package and helps with analysis and development \
 > In ./admin_agent_context you find a setup that follows a similar mechanism but geared towards administrative tasks instead of coding \
@@ -330,7 +330,7 @@ Run the following command (still in Terminal 2 from the project root):
 ```bash
 export RUN_DIR="./admin_agent_context/specs/research/20260226_transformer_architecture"
 
-goose run --model us.anthropic.claude-opus-4-6-v1 -s -t "
+goose run --model us.anthropic.claude-opus-4-8-v1 -s -t "
 I need you to create a research report requirements file. \
  \
 Read the following files for context: \
@@ -391,7 +391,7 @@ cp "${RUN_DIR}/report_requirements.md" "${REPORT_RUN_DIR}/requirements.md"
 #### Step 3.4 — Launch the research report mission
 
 ```bash
-goose run --model us.anthropic.claude-opus-4-6-v1 -s \
+goose run --model us.anthropic.claude-opus-4-8-v1 -s \
     --recipe ./admin_agent_context/recipes/mission_research_report.yaml \
     --params run_dir="${REPORT_RUN_DIR}"
 ```
@@ -456,7 +456,7 @@ This example creates a two-phase workflow:
 Read through this example trigger command to understand the pattern:
 
 ```bash
-goose run --model us.anthropic.claude-opus-4-6-v1 -s -t \
+goose run --model us.anthropic.claude-opus-4-8-v1 -s -t \
 "In ./coding_agent_context you can find my current agent setup \
 It is meant as a setup that can be dropped into any code package and helps with analysis and development \
 In ./admin_agent_context you find a setup that follows a similar mechanism but geared towards administrative tasks instead of coding \
@@ -506,7 +506,7 @@ Now it is your turn! Think of a workflow you would find useful and design it wit
 Craft your trigger command following this template:
 
 ```bash
-goose run --model us.anthropic.claude-opus-4-6-v1 -s -t \
+goose run --model us.anthropic.claude-opus-4-8-v1 -s -t \
 "In ./coding_agent_context you can find my current coding agent setup. \
 In ./admin_agent_context you find a similar setup geared towards administrative tasks. \
 Please analyze both setups to understand the patterns and conventions used. \
@@ -587,7 +587,7 @@ Make sure that you either copy the 'clean' `coding_agent_context` or you delete 
 export AWS_PROFILE=<YOUR_PROFILE_NAME>
 export AWS_REGION=us-west-1
 
-goose run --model us.anthropic.claude-opus-4-6-v1 -s \
+goose run --model us.anthropic.claude-opus-4-8-v1 -s \
     --recipe coding_agent_context/recipes/mission_generate_docs.yaml
 ```
 
@@ -639,7 +639,7 @@ mkdir -p coding_agent_context/specs/${FEATURE}
 # Write your requirements.md describing the feature...
 
 # Then launch the design mission:
-goose run --model us.anthropic.claude-opus-4-6-v1 -s \
+goose run --model us.anthropic.claude-opus-4-8-v1 -s \
     --recipe coding_agent_context/recipes/mission_architecture_design.yaml \
     --params feature="${FEATURE}"
 ```
@@ -659,7 +659,7 @@ Once you're satisfied with the design, chain directly into the TDD mission. This
 4. It maintains a `memory.md` file that carries learnings across sessions (e.g., Docker quirks, dependency notes)
 
 ```bash
-goose run --model us.anthropic.claude-opus-4-6-v1 -s \
+goose run --model us.anthropic.claude-opus-4-8-v1 -s \
     --recipe coding_agent_context/recipes/mission_tdd.yaml \
     --params feature="${FEATURE}"
 ```

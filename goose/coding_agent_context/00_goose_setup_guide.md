@@ -421,7 +421,7 @@ cat > "${XDG_CONFIG_HOME:-$HOME/.config}/goose/config.yaml" << 'GOOSE_CONFIG'
 AWS_PROFILE: <YOUR_PROFILE_NAME>cont
 AWS_REGION: us-east-1
 GOOSE_PROVIDER: aws_bedrock
-GOOSE_MODEL: us.anthropic.claude-opus-4-6-v1
+GOOSE_MODEL: us.anthropic.claude-opus-4-8-v1
 extensions:
   apps:
     enabled: true
@@ -536,7 +536,7 @@ export AWS_REGION=us-west-1
 ### Step 9.2 — Launch Goose with the Anthropic model
 
 ```bash
-goose run --model us.anthropic.claude-opus-4-6-v1 -s -t "Hello! Can you confirm you are working? Please tell me what model you are and what provider you are using."
+goose run --model us.anthropic.claude-opus-4-8-v1 -s -t "Hello! Can you confirm you are working? Please tell me what model you are and what provider you are using."
 ```
 
 **Expected:** Goose should respond, confirming it is running on the Claude model via AWS Bedrock.
@@ -661,7 +661,7 @@ export AWS_REGION=us-west-1
 ### Step 12.2 — Start a new Goose session
 
 ```bash
-goose run --model us.anthropic.claude-opus-4-6-v1 -s -t "Please look up the phonetool information for user \"jeff\" using the ReadInternalWebsites tool. Show me their name, job title, and manager."
+goose run --model us.anthropic.claude-opus-4-8-v1 -s -t "Please look up the phonetool information for user \"jeff\" using the ReadInternalWebsites tool. Show me their name, job title, and manager."
 ```
 
 **Expected:** Goose should use the `builder-mcp` extension's `ReadInternalWebsites` tool to fetch information from `phonetool.amazon.com/users/jeff` and display the user's name, job title, and manager information.
@@ -770,7 +770,7 @@ export AWS_PROFILE=<YOUR_PROFILE_NAME>cont
 export AWS_REGION=us-west-1
 
 # Start goose
-goose run --model us.anthropic.claude-opus-4-6-v1 -s -t "<initialRequest>"
+goose run --model us.anthropic.claude-opus-4-8-v1 -s -t "<initialRequest>"
 ```
 
 ---
