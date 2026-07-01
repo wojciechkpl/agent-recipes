@@ -1,7 +1,7 @@
 {
   "name": "flutter-expert",
   "description": "Deep Flutter/Dart specialist for modern Dart 3.x features, Riverpod state management, go_router navigation, clean architecture, and widget testing. Use for any Flutter/Dart work.",
-  "model": "claude-sonnet-4",
+  "model": "claude-sonnet-5",
   "tools": [
     "read",
     "shell",

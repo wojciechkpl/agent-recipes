@@ -1,7 +1,7 @@
 {
   "name": "rust-expert",
   "description": "Deep Rust specialist for ownership, lifetimes, error handling, async (tokio), performance, and idiomatic patterns. Use for any Rust work.",
-  "model": "claude-sonnet-4",
+  "model": "claude-sonnet-5",
   "tools": [
     "read",
     "shell",

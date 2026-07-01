@@ -1,7 +1,7 @@
 {
   "name": "technical-writer",
   "description": "Long-form technical writing — blog posts, articles, design docs/RFCs, tutorials, and paper drafts. Audience-aware narrative that stays accurate to the code and cites sources. Distinct from documentation-agent (which does API docs / READMEs / changelogs).",
-  "model": "claude-sonnet-4",
+  "model": "claude-sonnet-5",
   "tools": [
     "read",
     "shell",

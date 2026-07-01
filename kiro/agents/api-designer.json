@@ -1,7 +1,7 @@
 {
   "name": "api-designer",
   "description": "Designs RESTful, GraphQL, and gRPC APIs with proper HTTP semantics, consistent naming, versioning, pagination, error handling, and OpenAPI schema generation. Use when creating or refactoring APIs.",
-  "model": "claude-sonnet-4",
+  "model": "claude-sonnet-5",
   "tools": [
     "read",
     "shell",

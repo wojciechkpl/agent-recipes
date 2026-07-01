@@ -1,7 +1,7 @@
 {
   "name": "ai-researcher",
   "description": "AI/ML Research Scientist for literature review, ML solution design, tradeoff analysis, mathematical formulations, experiment design, and MLflow tracking. Fetches articles to raw/ folder, produces summary and literature review. Use for any ML research or implementation task.",
-  "model": "claude-opus-4",
+  "model": "claude-opus-4-8",
   "tools": [
     "read",
     "shell",

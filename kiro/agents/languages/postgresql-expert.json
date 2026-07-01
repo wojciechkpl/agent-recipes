@@ -1,7 +1,7 @@
 {
   "name": "postgresql-expert",
   "description": "Deep PostgreSQL specialist for schema design, query optimization, migrations, indexing, partitioning, RLS, and monitoring. Use for any database work.",
-  "model": "claude-sonnet-4",
+  "model": "claude-sonnet-5",
   "tools": [
     "read",
     "shell",

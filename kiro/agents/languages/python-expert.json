@@ -1,7 +1,7 @@
 {
   "name": "python-expert",
   "description": "Deep Python specialist for modern Python 3.10+ code. Enforces idiomatic type hints (PEP 484/604/612/695), async patterns, pytest TDD, FastAPI/Django/PyTorch best practices. Use for any Python work.",
-  "model": "claude-sonnet-4",
+  "model": "claude-sonnet-5",
   "tools": [
     "read",
     "shell",

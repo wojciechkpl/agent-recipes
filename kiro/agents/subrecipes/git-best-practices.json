@@ -1,7 +1,7 @@
 {
   "name": "git-best-practices",
   "description": "Enforces git workflow best practices: conventional commits, branching strategy, PR hygiene, and pre-commit validation.",
-  "model": "claude-haiku-4",
+  "model": "claude-haiku-4-5",
   "tools": [
     "read",
     "shell"

@@ -1,7 +1,7 @@
 {
   "name": "asana-sync",
   "description": "Best-effort Asana sync for workflows — preflight-checks availability, then creates/updates a task and posts per-phase comments. Degrades gracefully (queues locally) if Asana is unavailable; never blocks the core run. Use as the reporting side-channel in workflows.",
-  "model": "claude-opus-4",
+  "model": "claude-opus-4-8",
   "tools": [
     "read",
     "shell",

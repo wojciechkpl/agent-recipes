@@ -17,9 +17,9 @@ cp kiro/agents/languages/python-expert.json ~/.kiro/agents/
 
 | Tier | Model | Agents | Use Case |
 |------|-------|--------|----------|
-| **opus** | `claude-opus-4` | ai-researcher | Deep research, architecture |
-| **sonnet** | `claude-sonnet-4` | code-reviewer, debugger, python-expert, etc. | Code writing, reviews, implementation |
-| **haiku** | `claude-haiku-4` | documentation-agent, bash-expert, dependency-auditor | Docs, scripts, simple tasks |
+| **opus** | `claude-opus-4-8` | ai-researcher | Deep research, architecture |
+| **sonnet** | `claude-sonnet-5` | code-reviewer, debugger, python-expert, etc. | Code writing, reviews, implementation |
+| **haiku** | `claude-haiku-4-5` | documentation-agent, bash-expert, dependency-auditor | Docs, scripts, simple tasks |
 
 ## Directory Structure
 
@@ -41,7 +41,7 @@ kiro/
 |---------|------------|------|
 | Format | Markdown with YAML frontmatter | JSON |
 | Tools | `Read, Write, Edit, Bash, Grep, Glob` | `read, write, shell` |
-| Models | `opus, sonnet, haiku` | `claude-opus-4, claude-sonnet-4, claude-haiku-4` |
+| Models | `opus, sonnet, haiku` | `claude-opus-4-8, claude-sonnet-5, claude-haiku-4-5` |
 | Location | `~/.claude/agents/` | `~/.kiro/agents/` |
 | Skills | `.claude/skills/SKILL.md` | `.kiro/skills/SKILL.md` (same format) |
 
