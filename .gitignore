@@ -18,3 +18,13 @@ Thumbs.db
 
 # Archive artifacts (e.g. manual zip snapshots of subtrees)
 *.zip
+
+# Claude Code local/personal settings + autonomous-mode backup (may contain
+# machine-specific allow entries or absolute paths — never commit these).
+# NOTE: do NOT ignore all of .claude/ — claude/.claude-plugin/ and the committed
+# settings.autonomous.json profile are meant to be shared.
+**/.claude/settings.local.json
+**/.claude/settings.pre-autonomous.json
+# Stray per-project settings.json created by `autonomous-mode.sh on --project`
+# from inside the claude/ subfolder (accidental; the real profile is the source).
+claude/.claude/
