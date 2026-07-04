@@ -83,8 +83,10 @@ The setup script supports selective installation and previewing changes:
 `./setup.sh --claude` installs both the **agents** and the **`/wf-*` workflow commands**
 (user-level). It also sets `includeCoAuthoredBy: false` in the corresponding
 `settings.json` (user- or project-level) so Claude does **not** add itself as a git
-co-author — your other settings keys are preserved. Or load everything at once as a
-**plugin** — no copying, agents *and* workflows available immediately:
+co-author — your other settings keys are preserved. To also cut mid-session permission
+prompts, enable **[autonomous mode](#autonomous-mode-optional)** (`claude/autonomous-mode.sh on`).
+Or load everything at once as a **plugin** — no copying, agents *and* workflows available
+immediately:
 
 ```bash
 claude --plugin-dir /path/to/agent-recipes/claude
@@ -396,6 +398,22 @@ a `PreToolUse` guard hook** block catastrophic and secret-exfil operations.
   If you move the repo, re-run `on` to refresh it.
 
 ### 1. Enable it
+
+**Full global setup (recommended) — install everything + turn auto mode on for all projects:**
+
+```bash
+git clone https://github.com/wojciechkpl/agent-recipes.git ~/agent-recipes
+cd ~/agent-recipes
+./setup.sh --claude                 # agents + /wf-* commands + no-co-author default (user-level)
+claude/autonomous-mode.sh on        # enable autonomous mode globally (~/.claude/settings.json)
+# restart Claude Code — settings load at session start
+```
+
+> `setup.sh` installs the agents/commands; it does **not** flip autonomous mode (that's a
+> deliberate, security-relevant choice, so it stays a separate opt-in step). Run the two
+> commands together for a one-time global "auto Claude" setup.
+
+All toggle commands:
 
 ```bash
 # GLOBAL — all projects (~/.claude/settings.json)
