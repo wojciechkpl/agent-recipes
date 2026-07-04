@@ -47,6 +47,11 @@ check "sre installed"            exists .claude/agents/sre.md
 check "typescript-expert installed" exists .claude/agents/languages/typescript-expert.md
 check "asana-sync installed"     exists .claude/agents/subrecipes/asana-sync.md
 
+# Install must disable the Claude git co-author trailer in settings.json.
+check "settings.json created"    exists .claude/settings.json
+check "includeCoAuthoredBy=false" \
+  python3 -c "import json,sys; sys.exit(0 if json.load(open('.claude/settings.json')).get('includeCoAuthoredBy') is False else 1)"
+
 # The glob must install EVERY wf-*.md from source (guards new commands like
 # wf-pre-pr / wf-api / wf-perf added without touching setup.sh).
 src_count=$(find "${REPO}/claude/commands" -maxdepth 1 -name 'wf-*.md' | wc -l | tr -d ' ')

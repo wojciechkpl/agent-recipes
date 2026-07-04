@@ -175,11 +175,18 @@ claude/autonomous-mode.sh off [--project]
 claude/autonomous-mode.sh status [--project]
 ```
 
+Also available as the `/autonomous-mode` slash command (`on|off|status [--project]`).
+
 - Merges `claude/settings.autonomous.json` (`defaultMode: acceptEdits` + a broad
-  dev-toolchain allow-list) into the target `settings.json`, preserving your other keys
-  (model, statusLine, plugins); the original is backed up and restored on `off`.
-- Still **denied** even when on: `sudo`, catastrophic `rm -rf` of system/home/`.git`,
-  `git push --force`, `mkfs`/`dd`, and reading private keys (`*.pem`, `id_rsa`).
+  dev-toolchain allow-list + a safety deny-list + a **`PreToolUse` guard hook**) into the
+  target `settings.json`, preserving your other keys (model, statusLine, plugins); the
+  original is backed up and restored on `off`. Re-running `on` re-syncs without clobbering
+  the backup.
+- The guard hook (`claude/hooks/guard.py`) is the real safety net — it reads the actual
+  command (not just a prefix) and blocks secret/key exfil via any shell reader
+  (`cat ~/.ssh/id_rsa`, `grep … .env`), recursive deletes of protected roots regardless of
+  flag order (`rm -fr /`, `find -delete`), `curl … | bash`, `mkfs`/`dd`, force-push, and
+  `git reset --hard` — while allowing `git push --force-with-lease`.
 - No secrets in the committed profile. Takes effect on the **next** session.
 - Per-session alternative (no files): `claude --permission-mode acceptEdits`
   (or the stronger `claude --dangerously-skip-permissions`); in-session, Shift+Tab

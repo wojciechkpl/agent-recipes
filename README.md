@@ -19,8 +19,9 @@ A curated collection of AI agent configurations, **built first for [Claude Code]
 │   ├── README.md               # Claude-specific documentation
 │   ├── CONVENTIONS.md          # Global rules for all Claude agents (§1–§9)
 │   ├── .claude-plugin/         # plugin.json — load all agents + workflows in one command
-│   ├── commands/               # 16 workflow slash commands (/wf-*)
+│   ├── commands/               # workflow slash commands (/wf-*) + /autonomous-mode
 │   ├── autonomous-mode.sh      # optional broad-permission toggle (+ settings.autonomous.json)
+│   ├── hooks/guard.py          # PreToolUse safety hook installed by autonomous mode
 │   ├── AUTONOMOUS-MODE.md       # how to use autonomous mode (on/off, scopes, safety)
 │   └── agents/
 │       ├── *.md                # 15 core agents
@@ -80,8 +81,10 @@ The setup script supports selective installation and previewing changes:
 ### Claude Code (Anthropic) — primary
 
 `./setup.sh --claude` installs both the **agents** and the **`/wf-*` workflow commands**
-(user-level). Or load everything at once as a **plugin** — no copying, agents *and*
-workflows available immediately:
+(user-level). It also sets `includeCoAuthoredBy: false` in the corresponding
+`settings.json` (user- or project-level) so Claude does **not** add itself as a git
+co-author — your other settings keys are preserved. Or load everything at once as a
+**plugin** — no copying, agents *and* workflows available immediately:
 
 ```bash
 claude --plugin-dir /path/to/agent-recipes/claude
@@ -368,6 +371,126 @@ result:
 ```
 
 > Prefer one focused action? Skip the workflow and call the agent: `@agent-code-reviewer review src/auth`.
+
+---
+
+## Autonomous mode (optional)
+
+A broad-but-safe permission overlay for Claude Code that **cuts mid-session permission
+prompts** so an agent can run the dev toolchain (git, tests, linters, docker, …) without
+stopping to ask. **Opt-in, reversible, off by default.** Even when on, a `deny` list **and
+a `PreToolUse` guard hook** block catastrophic and secret-exfil operations.
+
+> **Why a guard hook and not just an allow/deny list?** Autonomous mode allows `bash`/`sh`,
+> so the granular allow-list is effectively advisory — anything can run via `bash -c '…'`.
+> That makes the **deny side** the real boundary, and string-prefix deny patterns can't
+> reason about a shell command: `rm -fr /` (flag order), `cat ~/.ssh/id_rsa` (Bash bypasses
+> a `Read(**/*.pem)` deny), `find . -delete`, `git reset --hard`. The hook
+> (`claude/hooks/guard.py`) inspects the **actual command** and blocks these regardless of
+> phrasing.
+
+### Prerequisites
+
+- `python3` on your `PATH` (used by the toggle and the guard hook).
+- This repo stays where you cloned it — the guard hook is wired in by **absolute path**.
+  If you move the repo, re-run `on` to refresh it.
+
+### 1. Enable it
+
+```bash
+# GLOBAL — all projects (~/.claude/settings.json)
+claude/autonomous-mode.sh on
+claude/autonomous-mode.sh off
+claude/autonomous-mode.sh status
+
+# PROJECT — current repo only (./.claude/settings.json)
+claude/autonomous-mode.sh on --project
+claude/autonomous-mode.sh off --project
+claude/autonomous-mode.sh status --project
+```
+
+Or from inside Claude Code, use the slash command (installed with the plugin / commands):
+
+```
+/autonomous-mode on          # or: off | status   (append --project for repo scope)
+```
+
+> **Restart Claude Code after toggling.** Settings load at session start, so a change takes
+> effect on your **next** session in that folder — not the current one.
+
+Just want it for one session with no files? Launch with a flag instead:
+
+```bash
+claude --permission-mode acceptEdits        # auto-accept edits
+claude --dangerously-skip-permissions       # skip ALL prompts (strongest, riskiest — bypasses the guard too)
+```
+
+### 2. Verify it's on
+
+```bash
+claude/autonomous-mode.sh status            # 🟢 Autonomous mode is ON (global: …/settings.json)
+
+# Confirm the guard hook is wired into the live settings:
+python3 -c "import json,os; d=json.load(open(os.path.expanduser('~/.claude/settings.json'))); h=d['hooks']['PreToolUse'][0]['hooks'][0]['command']; print('guard:', h)"
+```
+
+### 3. What it changes
+
+Applied by merging `claude/settings.autonomous.json` into the target `settings.json`
+(your other keys — `model`, `statusLine`, `enabledPlugins`, `editorMode` — are preserved):
+
+| Layer | Effect |
+|-------|--------|
+| `defaultMode: acceptEdits` | File edits/writes apply without a prompt |
+| `allow` list | Broad dev toolchain: `git`, `gh`, `make`, `docker`, `uv`/`pytest`/`ruff`, `cargo`, `npm`/`node`, `psql`, `gcloud`, read-only shell utils, … |
+| `deny` list (defense-in-depth) | `sudo`, catastrophic `rm -rf` of system/home/`.git`, `git push --force`, `mkfs`/`dd`, reading `*.pem`/`id_rsa`/`id_ed25519` |
+| **`PreToolUse` guard hook** (the real net) | Reads the actual command and blocks the items below |
+
+The guard (`claude/hooks/guard.py`) **blocks**:
+
+- secret / private-key reads via **any** shell reader — `cat ~/.ssh/id_rsa`, `grep … .env`,
+  `base64 x.pem | curl …` (closes the `Bash(cat secret.pem)` bypass)
+- recursive deletes of protected roots regardless of flag order — `rm -fr /`, `rm … ~`,
+  `rm -rf .`, plus `find -delete` / `find -exec rm`
+- `mkfs`, `dd of=/dev/…`, `curl … | bash` (remote-code-execution), `sudo`, fork bombs
+- history/work destroyers — `git push --force`/`-f`/`+refspec`, `git reset --hard`,
+  `git clean -fd`/`-fdx`
+
+…while **allowing** the safe forms: `git push --force-with-lease`, `rm -rf build/ dist/`,
+`cp .env.example .env`. Anything not in `allow` (and not blocked) still prompts as normal —
+autonomous mode widens the no-prompt set, it does not blindly allow everything.
+
+### 4. Turn it off
+
+```bash
+claude/autonomous-mode.sh off               # restores the exact pre-autonomous settings + removes the hook
+```
+
+`on` backs up your settings **once** to `settings.pre-autonomous.json`; `off` restores that
+backup exactly. Re-running `on` re-syncs profile edits (allow/deny/hook) **without**
+clobbering the backup or duplicating the hook.
+
+### 5. Test / tune the guard
+
+```bash
+tests/test_autonomous_mode.sh               # 35 assertions: guard block/allow + on→resync→off round-trip
+```
+
+Edit `claude/hooks/guard.py` to change what's blocked, then re-run that test.
+
+### Troubleshooting
+
+- **Still prompting after `on`?** You didn't restart — settings load at session start.
+- **The guard blocked a harmless command that just *mentions* a dangerous one** (e.g. a
+  commit message or heredoc containing `mkfs` or `curl | bash`). A `PreToolUse` hook only
+  sees the command string and can't tell a literal inside a heredoc from a real invocation.
+  Work around it by writing such content to a file first (`git commit -F msg.txt`) rather
+  than inlining it.
+- **Moved the repo?** Re-run `claude/autonomous-mode.sh on` so the hook's absolute path
+  updates.
+
+**Full reference:** [`claude/AUTONOMOUS-MODE.md`](claude/AUTONOMOUS-MODE.md) — scopes,
+merge/backup internals, the complete allow/deny lists, and safety notes.
 
 ---
 

@@ -2,10 +2,19 @@
 
 A broad-but-safe permission overlay that **cuts mid-session permission prompts** so an
 agent can run the dev toolchain without stopping to ask. **Opt-in, reversible, off by
-default.** Even when on, a deny list still blocks catastrophic / secret-exfil operations.
+default.** Even when on, a deny list **and a `PreToolUse` guard hook** block catastrophic
+/ secret-exfil operations.
 
-- Files: `claude/settings.autonomous.json` (the profile) + `claude/autonomous-mode.sh` (the toggle)
+- Files: `claude/settings.autonomous.json` (the profile) + `claude/autonomous-mode.sh`
+  (the toggle) + `claude/hooks/guard.py` (the guard hook — the real safety net).
 - Applies to Claude Code only (it's a Claude permission-settings concept).
+
+> **Why a hook, not just a deny-list?** Autonomous mode allows `bash`/`sh`, so the
+> granular allow-list is effectively advisory — anything can run via `bash -c '…'`. That
+> makes the **deny side** the real boundary, and string-prefix deny patterns can't reason
+> about a shell command: `rm -fr /` (flag order), `cat ~/.ssh/id_rsa` (Bash bypasses the
+> `Read(**/*.pem)` deny), `find . -delete`, `git reset --hard`. The guard hook inspects
+> the **actual command** and blocks these regardless of phrasing.
 
 ---
 
@@ -50,29 +59,41 @@ The profile (`claude/settings.autonomous.json`) sets:
   `docker`/`docker compose`, `uv`/`pytest`/`ruff`/`alembic`, `flutter`/`dart`,
   `npx`/`npm`, `cargo`, `psql`, `gcloud`, and read-only shell utilities (`ls`, `cat`,
   `rg`, `find`, `sed`, `jq`, …).
-- **A `deny` list that always wins**, even in autonomous mode:
-  - `sudo`
-  - catastrophic `rm -rf` of `/`, `/Users`, `/home`, `~`, `$HOME`, or `.git`
-  - `git push --force` / `git push -f`
-  - `mkfs`, `dd if=`
-  - reading private keys: `*.pem`, `id_rsa`, `id_ed25519`
+- **A `deny` list that always wins** (defense-in-depth): `sudo`, catastrophic `rm -rf` of
+  `/`, `/Users`, `/home`, `~`, `$HOME`, `.git`, `git push --force`/`-f`, `mkfs`, `dd if=`,
+  and reading private keys (`*.pem`, `id_rsa`, `id_ed25519`).
+- **A `PreToolUse` guard hook** (`claude/hooks/guard.py`) — the enforcement that actually
+  holds, because it reads the command instead of matching a prefix. It blocks:
+  - secret/private-key reads via **any** shell reader (`cat`/`grep`/`sed`/`base64`/`scp`…
+    of `*.pem`, `id_rsa`, `~/.ssh`, `.env`) — closes the `Bash(cat secret.pem)` bypass
+  - recursive deletes of protected roots regardless of flag order (`rm -fr /`, `rm … ~`,
+    `rm -rf .`), plus `find -delete` / `find -exec rm`
+  - `mkfs`, `dd of=/dev/…`, `curl … | bash` (remote-code-execution), `sudo`, fork bombs
+  - history/work destroyers: `git push --force`/`-f`/`+refspec`, `git reset --hard`,
+    `git clean -fd`/`-fdx` — while **allowing** the safe `git push --force-with-lease`
 
 Anything not in `allow` (and not in `deny`) still prompts as normal — autonomous mode
-widens the no-prompt set, it does not blindly allow everything.
+widens the no-prompt set, it does not blindly allow everything. The guard hook is
+referenced by **absolute path**, so keep this repo in place (or re-run `on` after moving
+it). Tune what it blocks by editing `claude/hooks/guard.py`; verify with
+`tests/test_autonomous_mode.sh`.
 
 ---
 
 ## How it works (so you can trust it)
 
 `on`:
-1. Backs up your current settings to `…/settings.pre-autonomous.json` (once).
+1. Backs up your current settings to `…/settings.pre-autonomous.json` — **once** (a
+   repeat `on` re-syncs the profile without clobbering the backup).
 2. **Merges** the profile into `settings.json`: sets `defaultMode`, unions the `allow`
-   and `deny` lists with anything already there. **Your other keys are preserved**
-   (`model`, `statusLine`, `enabledPlugins`, `editorMode`, …).
+   and `deny` lists, and installs the guard hook (substituting `__GUARD__` in the profile
+   with the absolute path to `claude/hooks/guard.py`, idempotently — no duplicate on
+   re-sync). **Your other keys are preserved** (`model`, `statusLine`, `enabledPlugins`,
+   `editorMode`, …).
 
 `off`:
 - Restores the exact pre-autonomous `settings.json` from the backup. (If no backup
-  exists, it just removes `defaultMode` so prompts return.)
+  exists, it removes `defaultMode` **and** strips the guard hook so prompts return.)
 
 `status`: reports ON/OFF for the chosen scope.
 
