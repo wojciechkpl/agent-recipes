@@ -81,8 +81,10 @@ The setup script supports selective installation and previewing changes:
 ### Claude Code (Anthropic) — primary
 
 `./setup.sh --claude` installs both the **agents** and the **`/wf-*` workflow commands**
-(user-level). Or load everything at once as a **plugin** — no copying, agents *and*
-workflows available immediately:
+(user-level). It also sets `includeCoAuthoredBy: false` in the corresponding
+`settings.json` (user- or project-level) so Claude does **not** add itself as a git
+co-author — your other settings keys are preserved. Or load everything at once as a
+**plugin** — no copying, agents *and* workflows available immediately:
 
 ```bash
 claude --plugin-dir /path/to/agent-recipes/claude

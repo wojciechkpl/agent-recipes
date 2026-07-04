@@ -155,6 +155,42 @@ copy_commands() {
     fi
 }
 
+# Ensure Claude does NOT add itself as a git co-author. Merges
+# `includeCoAuthoredBy: false` into the given settings.json, preserving every
+# other key; creates the file if absent; leaves an unparseable file untouched.
+set_no_coauthor() {
+    local settings="$1"
+
+    if ! command -v python3 >/dev/null 2>&1; then
+        warn "python3 not found — skipping includeCoAuthoredBy in $settings"
+        return
+    fi
+
+    if $DRY_RUN; then
+        info "[dry-run] set includeCoAuthoredBy=false in $settings"
+        return
+    fi
+
+    mkdir -p "$(dirname "$settings")"
+    if python3 - "$settings" <<'PY'
+import json, os, sys
+f = sys.argv[1]
+try:
+    d = json.load(open(f)) if os.path.exists(f) and os.path.getsize(f) else {}
+except Exception as e:
+    sys.stderr.write("parse error: %s\n" % e)
+    sys.exit(3)
+d["includeCoAuthoredBy"] = False
+json.dump(d, open(f, "w"), indent=2)
+open(f, "a").write("\n")
+PY
+    then
+        ok "Set includeCoAuthoredBy=false in $settings (no Claude co-author trailer)"
+    else
+        warn "Left $settings untouched (not valid JSON) — add '\"includeCoAuthoredBy\": false' manually"
+    fi
+}
+
 remove_commands() {
     local dest="$1"
     if [[ ! -d "$dest" ]]; then
@@ -301,6 +337,8 @@ if $INSTALL_CLAUDE; then
     copy_agents "${HOME}/.claude/agents"
     info "Installing workflow commands (user-level -> ~/.claude/commands/)"
     copy_commands "${HOME}/.claude/commands"
+    info "Ensuring Claude is not added as a git co-author (user-level)"
+    set_no_coauthor "${HOME}/.claude/settings.json"
     printf "\n"
 fi
 
@@ -309,6 +347,8 @@ if $INSTALL_CLAUDE_PROJECT; then
     copy_agents ".claude/agents"
     info "Installing workflow commands (project-level -> .claude/commands/)"
     copy_commands ".claude/commands"
+    info "Ensuring Claude is not added as a git co-author (project-level)"
+    set_no_coauthor ".claude/settings.json"
     printf "\n"
 fi
 
