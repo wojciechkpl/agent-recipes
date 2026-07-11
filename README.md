@@ -19,7 +19,7 @@ A curated collection of AI agent configurations, **built first for [Claude Code]
 │   ├── README.md               # Claude-specific documentation
 │   ├── CONVENTIONS.md          # Global rules for all Claude agents (§1–§9)
 │   ├── .claude-plugin/         # plugin.json — load all agents + workflows in one command
-│   ├── commands/               # workflow slash commands (/wf-*) + /autonomous-mode
+│   ├── commands/               # workflow slash commands (/wf-*) + /autonomous-mode + /review-app-feedback
 │   ├── autonomous-mode.sh      # optional broad-permission toggle (+ settings.autonomous.json)
 │   ├── hooks/guard.py          # PreToolUse safety hook installed by autonomous mode
 │   ├── AUTONOMOUS-MODE.md       # how to use autonomous mode (on/off, scopes, safety)
