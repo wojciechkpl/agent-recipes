@@ -6,7 +6,8 @@ default.** Even when on, a deny list **and a `PreToolUse` guard hook** block cat
 / secret-exfil operations.
 
 - Files: `claude/settings.autonomous.json` (the profile) + `claude/autonomous-mode.sh`
-  (the toggle) + `claude/hooks/guard.py` (the guard hook — the real safety net).
+  (the toggle) + `claude/hooks/guard.sh` → `claude/hooks/guard.py` (the guard hook — the
+  real safety net; guard.sh is a fast pre-filter, guard.py decides).
 - Applies to Claude Code only (it's a Claude permission-settings concept).
 
 > **Why a hook, not just a deny-list?** Autonomous mode allows `bash`/`sh`, so the
@@ -62,7 +63,7 @@ The profile (`claude/settings.autonomous.json`) sets:
 - **A `deny` list that always wins** (defense-in-depth): `sudo`, catastrophic `rm -rf` of
   `/`, `/Users`, `/home`, `~`, `$HOME`, `.git`, `git push --force`/`-f`, `mkfs`, `dd if=`,
   and reading private keys (`*.pem`, `id_rsa`, `id_ed25519`).
-- **A `PreToolUse` guard hook** (`claude/hooks/guard.py`) — the enforcement that actually
+- **A `PreToolUse` guard hook** (`claude/hooks/guard.sh`) — the enforcement that actually
   holds, because it reads the command instead of matching a prefix. It blocks:
   - secret/private-key reads via **any** shell reader (`cat`/`grep`/`sed`/`base64`/`scp`…
     of `*.pem`, `id_rsa`, `~/.ssh`, `.env`) — closes the `Bash(cat secret.pem)` bypass
@@ -75,8 +76,16 @@ The profile (`claude/settings.autonomous.json`) sets:
 Anything not in `allow` (and not in `deny`) still prompts as normal — autonomous mode
 widens the no-prompt set, it does not blindly allow everything. The guard hook is
 referenced by **absolute path**, so keep this repo in place (or re-run `on` after moving
-it). Tune what it blocks by editing `claude/hooks/guard.py`; verify with
+it). Tune what it blocks by editing `claude/hooks/guard.py`; if you add a rule, add a
+matching token to `TRIGGERS` in `claude/hooks/guard.sh` too. Verify with
 `tests/test_autonomous_mode.sh`.
+
+**Why two files?** The hook runs on every Bash and Read call, and starting Python costs
+~16 ms whatever the verdict. `guard.sh` answers "could this payload trip any rule at
+all?" with a single `grep` (~4 ms) and exits early when it cannot — on a real 8k-command
+corpus that skips Python on 90.5% of calls, ~3.2x faster overall. `guard.py` remains the
+only thing that decides what is blocked; the pre-filter may only skip work, never change
+a verdict, and the test suite asserts the two always agree.
 
 ---
 
@@ -87,8 +96,8 @@ it). Tune what it blocks by editing `claude/hooks/guard.py`; verify with
    repeat `on` re-syncs the profile without clobbering the backup).
 2. **Merges** the profile into `settings.json`: sets `defaultMode`, unions the `allow`
    and `deny` lists, and installs the guard hook (substituting `__GUARD__` in the profile
-   with the absolute path to `claude/hooks/guard.py`, idempotently — no duplicate on
-   re-sync). **Your other keys are preserved** (`model`, `statusLine`, `enabledPlugins`,
+   with the absolute path to `claude/hooks/guard.sh`, idempotently — no duplicate on
+   re-sync, and an older guard.py install is upgraded in place). **Your other keys are preserved** (`model`, `statusLine`, `enabledPlugins`,
    `editorMode`, …).
 
 `off`:

@@ -21,7 +21,8 @@ A curated collection of AI agent configurations, **built first for [Claude Code]
 │   ├── .claude-plugin/         # plugin.json — load all agents + workflows in one command
 │   ├── commands/               # workflow slash commands (/wf-*) + /autonomous-mode + /review-app-feedback
 │   ├── autonomous-mode.sh      # optional broad-permission toggle (+ settings.autonomous.json)
-│   ├── hooks/guard.py          # PreToolUse safety hook installed by autonomous mode
+│   ├── hooks/guard.sh          # PreToolUse hook entrypoint — fast pre-filter
+│   ├── hooks/guard.py          # the guard's decision logic (called by guard.sh)
 │   ├── AUTONOMOUS-MODE.md       # how to use autonomous mode (on/off, scopes, safety)
 │   └── agents/
 │       ├── *.md                # 15 core agents
@@ -405,8 +406,8 @@ a `PreToolUse` guard hook** block catastrophic and secret-exfil operations.
 > That makes the **deny side** the real boundary, and string-prefix deny patterns can't
 > reason about a shell command: `rm -fr /` (flag order), `cat ~/.ssh/id_rsa` (Bash bypasses
 > a `Read(**/*.pem)` deny), `find . -delete`, `git reset --hard`. The hook
-> (`claude/hooks/guard.py`) inspects the **actual command** and blocks these regardless of
-> phrasing.
+> (`claude/hooks/guard.sh` → `claude/hooks/guard.py`) inspects the **actual command** and
+> blocks these regardless of phrasing.
 
 ### Prerequisites
 
@@ -481,7 +482,7 @@ Applied by merging `claude/settings.autonomous.json` into the target `settings.j
 | `deny` list (defense-in-depth) | `sudo`, catastrophic `rm -rf` of system/home/`.git`, `git push --force`, `mkfs`/`dd`, reading `*.pem`/`id_rsa`/`id_ed25519` |
 | **`PreToolUse` guard hook** (the real net) | Reads the actual command and blocks the items below |
 
-The guard (`claude/hooks/guard.py`) **blocks**:
+The guard (`claude/hooks/guard.sh`, which delegates to `claude/hooks/guard.py`) **blocks**:
 
 - secret / private-key reads via **any** shell reader — `cat ~/.ssh/id_rsa`, `grep … .env`,
   `base64 x.pem | curl …` (closes the `Bash(cat secret.pem)` bypass)
@@ -508,10 +509,13 @@ clobbering the backup or duplicating the hook.
 ### 5. Test / tune the guard
 
 ```bash
-tests/test_autonomous_mode.sh               # 35 assertions: guard block/allow + on→resync→off round-trip
+tests/test_autonomous_mode.sh               # 51 assertions: guard block/allow, guard.sh≡guard.py, on→resync→off round-trip
 ```
 
 Edit `claude/hooks/guard.py` to change what's blocked, then re-run that test.
+**If you add a rule, add a matching token to `TRIGGERS` in `claude/hooks/guard.sh`** —
+that pre-filter must stay a superset of everything guard.py can block, or the new rule
+will be silently skipped. The test suite checks the two agree.
 
 ### Troubleshooting
 

@@ -1,12 +1,12 @@
 {
   "//": "OPTIONAL autonomous-mode permission overlay for Claude Code. Apply with `claude/autonomous-mode.sh on` (global, ~/.claude) or `claude/autonomous-mode.sh on --project` (this repo's .claude). It merges defaultMode:acceptEdits + a broad dev-toolchain allow-list + a safety deny-list + a PreToolUse guard hook into the target settings.json, preserving your other keys; the original is backed up and restored on `off`. Reduces mid-session permission prompts; the deny list AND the guard hook still block catastrophic/secret-exfil ops. Contains NO secrets — safe to commit. Per-session alternative (no files): `claude --permission-mode acceptEdits`.",
-  "//hooks": "The __GUARD__ token is replaced by autonomous-mode.sh with the absolute path to claude/hooks/guard.py at `on` time — the hook is the real safety net (the deny-list below is defense-in-depth; string prefixes can't catch flag reordering or alternate readers).",
+  "//hooks": "The __GUARD__ token is replaced by autonomous-mode.sh with the absolute path to claude/hooks/guard.sh at `on` time (a fast pre-filter that delegates to guard.py only when a payload could actually trip a rule) — the hook is the real safety net (the deny-list below is defense-in-depth; string prefixes can't catch flag reordering or alternate readers).",
   "hooks": {
     "PreToolUse": [
       {
         "matcher": "Bash|Read",
         "hooks": [
-          { "type": "command", "command": "python3 \"__GUARD__\"" }
+          { "type": "command", "command": "\"__GUARD__\"" }
         ]
       }
     ]

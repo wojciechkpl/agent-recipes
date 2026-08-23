@@ -6,9 +6,11 @@
 #   * defaultMode:acceptEdits
 #   * a broad dev-toolchain allow-list
 #   * a safety deny-list
-#   * a PreToolUse guard hook (claude/hooks/guard.py) — the REAL safety net: it inspects
+#   * a PreToolUse guard hook (claude/hooks/guard.sh) — the REAL safety net: it inspects
 #     the actual command and blocks secret-exfil / catastrophic deletes / force-push /
 #     RCE-pipes that brittle string-prefix deny patterns cannot reliably catch.
+#     guard.sh is a fast pre-filter that skips the ~16 ms Python start for the ~90%
+#     of calls that cannot trip any rule; guard.py remains the decision authority.
 # `off` restores the exact pre-autonomous settings from a one-time backup.
 #
 # Usage:
@@ -29,7 +31,7 @@ set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROFILE="$HERE/settings.autonomous.json"
-GUARD="$HERE/hooks/guard.py"
+GUARD="$HERE/hooks/guard.sh"
 
 ACTION="${1:-status}"
 SCOPE="global"
@@ -68,12 +70,15 @@ perm["defaultMode"]=p["defaultMode"]
 perm["allow"]=sorted(set(perm.get("allow",[]))|set(p["allow"]))
 perm["deny"]=sorted(set(perm.get("deny",[]))|set(p.get("deny",[])))
 # Merge hooks, substituting the guard placeholder with its absolute path.
-# Idempotent: drop any prior guard.py entry for the same matcher before re-adding.
+# Idempotent: drop any prior guard entry for the same matcher before re-adding.
+# Matches "hooks/guard." so it also recognises pre-guard.sh installs that still
+# point straight at guard.py — those get upgraded in place, not duplicated.
+GUARD_MARK="hooks/guard."
 for event,entries in prof.get("hooks",{}).items():
     cur=base.setdefault("hooks",{}).setdefault(event,[])
     for entry in entries:
         e=json.loads(json.dumps(entry).replace("__GUARD__",guard))
-        cur[:]=[c for c in cur if not (c.get("matcher")==e.get("matcher") and "guard.py" in json.dumps(c))]
+        cur[:]=[c for c in cur if not (c.get("matcher")==e.get("matcher") and GUARD_MARK in json.dumps(c))]
         cur.append(e)
 json.dump(base,open(sp,"w"),indent=2)
 print(f"merged autonomous profile (+guard hook) into {sp}")
@@ -90,9 +95,10 @@ import json,sys
 d=json.load(open(sys.argv[1]))
 d.get("permissions",{}).pop("defaultMode",None)
 # Strip our guard hook; drop now-empty hook events / the hooks key entirely.
+# "hooks/guard." covers both the guard.sh entrypoint and older guard.py installs.
 hk=d.get("hooks",{})
 for event in list(hk):
-    hk[event]=[c for c in hk[event] if "guard.py" not in json.dumps(c)]
+    hk[event]=[c for c in hk[event] if "hooks/guard." not in json.dumps(c)]
     if not hk[event]: del hk[event]
 if "hooks" in d and not d["hooks"]: del d["hooks"]
 json.dump(d,open(sys.argv[1],"w"),indent=2)
