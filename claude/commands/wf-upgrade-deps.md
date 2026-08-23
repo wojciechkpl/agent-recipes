@@ -1,7 +1,7 @@
 ---
 description: "Guarded dependency upgrade: audit → upgrade one at a time → test → revert-on-break → review"
 argument-hint: "[specific dependency, default = all outdated/vulnerable]"
-allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Agent
+allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Agent, Skill
 ---
 
 # Workflow: Upgrade Dependencies
@@ -39,7 +39,7 @@ edit code yourself; you dispatch specialists and own the gates.
    Never report "upgraded" for a dep whose suite you did not see go green.
 
 ## Asana sync (optional)
-If an Asana project is configured, dispatch the `asana-sync` subrecipe to reflect this
+If an Asana project is configured, invoke the `asana-sync` skill (Skill tool) to reflect this
 run on the relevant Asana task — typically `start`, a `comment` at each gate/finding, and
 `done` (with links) on completion, or `blocked` if a gate stops it. Best-effort and
 non-blocking: a silent no-op if Asana isn't configured or reachable.

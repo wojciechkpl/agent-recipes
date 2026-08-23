@@ -1,7 +1,7 @@
 ---
 description: "Scaffold a new project, prove the harness with a TDD smoke feature, then document"
 argument-hint: "<project name> <language> [type: cli|api|library|...]"
-allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Agent
+allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Agent, Skill
 ---
 
 # Workflow: New Project
@@ -54,7 +54,7 @@ real test green — an empty scaffold that has never executed a test is unproven
    commands, and any decisions the user should confirm (license, CI provider, etc.).
 
 ## Asana sync (optional)
-If an Asana project is configured, dispatch the `asana-sync` subrecipe to reflect this
+If an Asana project is configured, invoke the `asana-sync` skill (Skill tool) to reflect this
 run on the relevant Asana task — typically `start`, a `comment` at each gate/finding, and
 `done` (with links) on completion, or `blocked` if a gate stops it. Best-effort and
 non-blocking: a silent no-op if Asana isn't configured or reachable.

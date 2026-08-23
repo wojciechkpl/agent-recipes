@@ -1,7 +1,7 @@
 ---
 description: "ML experiment loop: frame → data → baseline → variant → compare (tracked) → report"
 argument-hint: "<hypothesis / approach to test>"
-allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Agent
+allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Agent, Skill
 ---
 
 # Workflow: ML Experiment
@@ -17,8 +17,8 @@ chosen approach first, run `/wf-ml-research`; this workflow tests a *named* hypo
 - `ai-researcher` — sharpen the hypothesis, baseline, metric, and what would falsify it.
 - `data-engineer` — reproducible dataset prep (deterministic, validated).
 - a matching language expert (`python-expert`, etc.) — implement baseline + variant.
-- `mlflow-tracking` — log params/metrics/artifacts for every run.
-- `docker-ml-environment` — (if needed) a reproducible, pinned environment.
+- the `mlflow-tracking` **skill** (run inline via the Skill tool) — log params/metrics/artifacts for every run.
+- the `docker-ml-environment` **skill** (run inline via the Skill tool) — (if needed) a reproducible, pinned environment.
 
 ## Steps
 1. **FRAME.** Dispatch `ai-researcher` (or read `.wf/ml-approach.md` if `/wf-ml-research`
@@ -42,7 +42,7 @@ chosen approach first, run `/wf-ml-research`; this workflow tests a *named* hypo
    host limits (e.g. no GPU) if they capped the run.
 
 ## Asana sync (optional)
-If an Asana project is configured, dispatch the `asana-sync` subrecipe to reflect this
+If an Asana project is configured, invoke the `asana-sync` skill (Skill tool) to reflect this
 run on the relevant Asana task — typically `start`, a `comment` at each gate/finding, and
 `done` (with links) on completion, or `blocked` if a gate stops it. Best-effort and
 non-blocking: a silent no-op if Asana isn't configured or reachable.

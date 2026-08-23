@@ -1,7 +1,7 @@
 ---
 description: "Feature via TDD: detect → design → red → green → review → docs"
 argument-hint: "<feature description>"
-allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Agent
+allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Agent, Skill
 ---
 
 # Workflow: Feature (TDD)
@@ -13,7 +13,7 @@ dispatch the specialist subagents below via the `Agent` tool, one phase at a
 time, and you own the gate between phases. Stop and report if any gate fails.
 
 ## Subagents you will dispatch
-- `language-detection` — identify language, framework, test runner, toolchain.
+- the `language-detection` **skill** (run inline via the Skill tool) — identify language, framework, test runner, toolchain.
 - `architect`, `api-designer`, or `ai-researcher` — optional design step for
   non-trivial features (multi-module design / interface / algorithm respectively).
 - `test-architect` — RED phase: writes the failing tests (the test AUTHOR).
@@ -24,7 +24,7 @@ time, and you own the gate between phases. Stop and report if any gate fails.
 
 ## Steps
 
-1. **DETECT.** Dispatch `language-detection`. Record the stack and the exact test
+1. **DETECT.** Invoke the `language-detection` skill (Skill tool). Record the stack and the exact test
    command. Pick the matching `{lang}-expert`. If no expert matches, tell the user
    and stop.
 
@@ -66,7 +66,7 @@ time, and you own the gate between phases. Stop and report if any gate fails.
    the code-reviewer verdict. State plainly whether every gate passed.
 
 ## Asana sync (optional side-channel)
-If an Asana project is configured (see the `asana-sync` subrecipe), dispatch `asana-sync`
+If an Asana project is configured (see the `asana-sync` skill), invoke the `asana-sync` skill
 to mirror this run: `start` (task → In Progress) at step 1, a `comment` after each gate
 (RED / GREEN / REVIEW), and `done` (+ PR link) at REPORT. It preflights availability and
 **degrades gracefully** — if Asana isn't configured or is unreachable it's a silent no-op

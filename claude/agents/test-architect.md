@@ -39,7 +39,7 @@ in the test names and a comment — do not silently invent a shape.
 
 ### 2. Detect the test stack
 Identify the language, test runner, and conventions from the project (config files,
-existing tests). Follow the `tdd-generic` subrecipe's per-language naming and layout
+existing tests). Follow the `tdd-generic` skill's per-language naming and layout
 (`test_<behavior>_when_<condition>_should_<result>`, mirrored test dirs, etc.).
 
 ### 3. Write the failing tests

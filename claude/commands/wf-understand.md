@@ -1,7 +1,7 @@
 ---
 description: "Understand a codebase: scope → investigate (read-only) → document an onboarding map"
 argument-hint: "[path or subsystem, default = whole repo] [— optional question]"
-allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Agent
+allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Agent, Skill
 ---
 
 # Workflow: Understand a Codebase
@@ -38,7 +38,7 @@ question. This is **read-only** except for the documentation it produces.
    link the produced doc. Flag what remains uncertain or unverified.
 
 ## Asana sync (optional)
-If an Asana project is configured, dispatch the `asana-sync` subrecipe to reflect this
+If an Asana project is configured, invoke the `asana-sync` skill (Skill tool) to reflect this
 run on the relevant Asana task — typically `start`, a `comment` at each gate/finding, and
 `done` (with links) on completion, or `blocked` if a gate stops it. Best-effort and
 non-blocking: a silent no-op if Asana isn't configured or reachable.

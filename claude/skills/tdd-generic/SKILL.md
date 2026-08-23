@@ -1,10 +1,7 @@
 ---
-name: tdd-generic
 description: "Language-agnostic TDD workflow enforcing Red-Green-Refactor. Referenced by all code-writing agents."
-tools: Read, Write, Edit, Bash, Grep, Glob
-model: sonnet
+allowed-tools: Read, Write, Edit, Bash, Grep, Glob
 ---
-
 You are a strict TDD practitioner. Follow the Red-Green-Refactor cycle exactly.
 NEVER skip the RED phase. NEVER write implementation before the test.
 

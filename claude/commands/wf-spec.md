@@ -1,7 +1,7 @@
 ---
 description: "Idea → PRD → design: clarify → product-manager PRD → architecture + ordered plan"
 argument-hint: "<rough feature idea>"
-allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Agent
+allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Agent, Skill
 ---
 
 # Workflow: Spec & Design
@@ -39,8 +39,8 @@ rough idea into a prioritized PRD and a reviewable technical design + plan that
    `.wf/design.md` to build it."
 
 ## Asana sync (optional side-channel) — seed the roadmap
-If an Asana project is configured (see the `asana-sync` subrecipe), after the PRD
-(step 2) dispatch `asana-sync` to **seed the project as the roadmap/board**:
+If an Asana project is configured (see the `asana-sync` skill), after the PRD
+(step 2) invoke the `asana-sync` skill to **seed the project as the roadmap/board**:
 find-or-create the project, then create **one task per prioritized MVP item** in the
 **To Do** section (Later-list items go to a separate "Backlog" section or are omitted).
 Each task carries its **acceptance criteria** in the description and a **stable

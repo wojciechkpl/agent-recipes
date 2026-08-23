@@ -87,7 +87,7 @@ copy_agents() {
         exit 1
     fi
 
-    local dirs=("$dest" "$dest/languages" "$dest/specialized" "$dest/subrecipes")
+    local dirs=("$dest" "$dest/languages" "$dest/specialized")
     for d in "${dirs[@]}"; do
         if $DRY_RUN; then
             info "[dry-run] mkdir -p $d"
@@ -101,7 +101,6 @@ copy_agents() {
         "$src/*.md:$dest/"
         "$src/languages/*.md:$dest/languages/"
         "$src/specialized/*.md:$dest/specialized/"
-        "$src/subrecipes/*.md:$dest/subrecipes/"
     )
 
     for pair in "${pairs[@]}"; do
@@ -153,6 +152,73 @@ copy_commands() {
         info "[dry-run] would copy $count workflow command(s) to $dest"
     else
         ok "Copied $count workflow command(s) to $dest"
+    fi
+}
+
+copy_skills() {
+    local dest="$1"
+    local src="${SCRIPT_DIR}/claude/skills"
+
+    if [[ ! -d "$src" ]]; then
+        warn "No skills directory at $src — skipping skills"
+        return
+    fi
+
+    local count=0
+    local d name
+    for d in "$src"/*/; do
+        [[ -f "${d}SKILL.md" ]] || continue
+        name="$(basename "$d")"
+        if $DRY_RUN; then
+            info "[dry-run] cp ${d}SKILL.md -> $dest/$name/"
+        else
+            mkdir -p "$dest/$name"
+            cp "${d}SKILL.md" "$dest/$name/"
+        fi
+        count=$((count + 1))
+    done
+
+    if $DRY_RUN; then
+        info "[dry-run] would copy $count skill(s) to $dest"
+    else
+        ok "Copied $count skill(s) to $dest"
+    fi
+}
+
+# Remove ONLY the skills this repo ships (named in claude/skills/), preserving
+# any skills the user created themselves.
+remove_skills() {
+    local dest="$1"
+    local src="${SCRIPT_DIR}/claude/skills"
+    if [[ ! -d "$dest" ]]; then
+        info "No skills to remove at $dest"
+        return
+    fi
+
+    local count=0
+    local d name
+    for d in "$src"/*/; do
+        [[ -d "$d" ]] || continue
+        name="$(basename "$d")"
+        if [[ -d "$dest/$name" ]]; then
+            if $DRY_RUN; then
+                info "[dry-run] rm -rf $dest/$name"
+            else
+                rm -rf "$dest/$name"
+            fi
+            count=$((count + 1))
+        fi
+    done
+
+    # Drop the directory only if our removal left it empty (tolerate a race).
+    if ! $DRY_RUN && [[ -d "$dest" ]] && [[ -z "$(ls -A "$dest" 2>/dev/null)" ]]; then
+        rmdir "$dest" 2>/dev/null || true
+    fi
+
+    if $DRY_RUN; then
+        info "[dry-run] would remove $count skill(s) from $dest"
+    else
+        ok "Removed $count skill(s) from $dest"
     fi
 }
 
@@ -324,6 +390,8 @@ if $UNINSTALL; then
     remove_agents ".claude/agents"
     remove_commands "${HOME}/.claude/commands"
     remove_commands ".claude/commands"
+    remove_skills "${HOME}/.claude/skills"
+    remove_skills ".claude/skills"
     remove_goose_config
 
     printf "\n${GREEN}${BOLD}Uninstall complete.${RESET}\n"
@@ -338,6 +406,8 @@ if $INSTALL_CLAUDE; then
     copy_agents "${HOME}/.claude/agents"
     info "Installing workflow commands (user-level -> ~/.claude/commands/)"
     copy_commands "${HOME}/.claude/commands"
+    info "Installing skills (user-level -> ~/.claude/skills/)"
+    copy_skills "${HOME}/.claude/skills"
     info "Ensuring Claude is not added as a git co-author (user-level)"
     set_no_coauthor "${HOME}/.claude/settings.json"
     printf "\n"
@@ -348,6 +418,8 @@ if $INSTALL_CLAUDE_PROJECT; then
     copy_agents ".claude/agents"
     info "Installing workflow commands (project-level -> .claude/commands/)"
     copy_commands ".claude/commands"
+    info "Installing skills (project-level -> .claude/skills/)"
+    copy_skills ".claude/skills"
     info "Ensuring Claude is not added as a git co-author (project-level)"
     set_no_coauthor ".claude/settings.json"
     printf "\n"

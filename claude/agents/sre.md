@@ -42,7 +42,7 @@ pinned base images, and release conventions — so later changes stay consistent
 
 ## What NOT to do
 - For greenfield scaffolding (first-time CI/Docker), defer to `project-bootstrapper`;
-  for ML/GPU containers + MLflow, defer to the `docker-ml-environment` subrecipe.
+  for ML/GPU containers + MLflow, defer to the `docker-ml-environment` skill.
 - Do NOT bake secrets into images, configs, or commits.
 - Do NOT use unpinned/`latest` base images or dependencies.
 - Do NOT run containers as root without an explicit, justified reason.

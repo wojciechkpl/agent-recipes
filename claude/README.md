@@ -8,7 +8,7 @@ Each agent is a Markdown file with YAML frontmatter that defines a focused subag
 
 ### Option 0: As a plugin (single portable unit — agents + workflows)
 The `claude/` directory is a self-contained Claude Code plugin (`claude/.claude-plugin/plugin.json`)
-that bundles all **29 agents**, **15 workflow commands**, and the **`/wf` router**.
+that bundles all **22 agents**, **7 skills**, **15 workflow commands**, and the **`/wf` router**.
 
 Install from the plugin marketplace (no clone needed — the repo root's
 `.claude-plugin/marketplace.json` publishes this plugin):
@@ -28,24 +28,24 @@ options below install agents only; use `setup.sh` to also install the workflow c
 ### Option 1: Project-Level (recommended for teams)
 ```bash
 # From your project root
-mkdir -p .claude/agents/languages .claude/agents/specialized .claude/agents/subrecipes
+mkdir -p .claude/agents/languages .claude/agents/specialized .claude/skills
 
 # Copy all agents
 cp /path/to/agent-recipes/claude/agents/*.md .claude/agents/
 cp /path/to/agent-recipes/claude/agents/languages/*.md .claude/agents/languages/
 cp /path/to/agent-recipes/claude/agents/specialized/*.md .claude/agents/specialized/
-cp /path/to/agent-recipes/claude/agents/subrecipes/*.md .claude/agents/subrecipes/
+cp -R /path/to/agent-recipes/claude/skills/* .claude/skills/
 ```
 
 Then commit `.claude/agents/` to version control — your team gets the agents automatically.
 
 ### Option 2: User-Level (personal, all projects)
 ```bash
-mkdir -p ~/.claude/agents/languages ~/.claude/agents/specialized ~/.claude/agents/subrecipes
+mkdir -p ~/.claude/agents/languages ~/.claude/agents/specialized ~/.claude/skills
 cp claude/agents/*.md ~/.claude/agents/
 cp claude/agents/languages/*.md ~/.claude/agents/languages/
 cp claude/agents/specialized/*.md ~/.claude/agents/specialized/
-cp claude/agents/subrecipes/*.md ~/.claude/agents/subrecipes/
+cp -R claude/skills/* ~/.claude/skills/
 ```
 
 ## Usage
@@ -112,7 +112,11 @@ claude agents
 | `ai-researcher` | Opus | Literature review, ML solution design, tradeoff analysis, MLflow |
 | `ux-designer` | Sonnet | Journey mapping, wireframes, design systems, WCAG 2.2 audit |
 
-### Subrecipes (Shared Workflows)
+### Skills (shared procedures)
+
+Skills live in `claude/skills/<name>/SKILL.md`, install to `.claude/skills/`
+(or `~/.claude/skills/`), and are invoked **inline via the Skill tool** — no
+subagent dispatch. Workflows and agents load them mid-run.
 | Agent | Description |
 |-------|-------------|
 | `tdd-generic` | Language-agnostic Red-Green-Refactor cycle |
@@ -152,7 +156,7 @@ the workflow defines the hand-offs and gates. Canonical catalog: `shared/workflo
 ### Asana sync (optional)
 
 Every `/wf-*` workflow can mirror its run to an Asana task via the `asana-sync`
-subrecipe — a **best-effort side-channel that never blocks the run**. It
+skill — a **best-effort side-channel that never blocks the run**. It
 preflights availability, **finds-or-creates the target project** (by GID or name, never
 duplicating), and **resolves the assignee**; if Asana isn't configured or is unreachable
 it's a silent no-op (updates queued locally, nothing lost).

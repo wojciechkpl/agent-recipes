@@ -1,7 +1,7 @@
 ---
 description: "Schema change with a safe migration: design (+rollback) → safety gate → test on scratch DB → review"
 argument-hint: "<schema change, e.g. 'add index on orders(user_id)'>"
-allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Agent
+allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Agent, Skill
 ---
 
 # Workflow: Database Change
@@ -42,7 +42,7 @@ assessment, never blindly. You dispatch specialists and own the gates.
    user must run against production. Do not apply to a real database without confirmation.
 
 ## Asana sync (optional)
-If an Asana project is configured, dispatch the `asana-sync` subrecipe to reflect this
+If an Asana project is configured, invoke the `asana-sync` skill (Skill tool) to reflect this
 run on the relevant Asana task — typically `start`, a `comment` at each gate/finding, and
 `done` (with links) on completion, or `blocked` if a gate stops it. Best-effort and
 non-blocking: a silent no-op if Asana isn't configured or reachable.

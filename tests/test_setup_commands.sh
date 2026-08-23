@@ -28,9 +28,10 @@ workdir="$(mktemp -d)"
 trap 'rm -rf "$workdir"' EXIT
 cd "$workdir"
 
-# A pre-existing user command that uninstall must NOT delete.
-mkdir -p .claude/commands
+# A pre-existing user command and skill that uninstall must NOT delete.
+mkdir -p .claude/commands .claude/skills/my-own-skill
 printf 'my own command\n' > .claude/commands/my-own.md
+printf 'my own skill\n'   > .claude/skills/my-own-skill/SKILL.md
 
 # ── Install (project-level) ───────────────────────────────────
 "$SETUP" --claude-project >/dev/null
@@ -45,6 +46,21 @@ check "product-manager installed" exists .claude/agents/product-manager.md
 check "data-engineer installed"  exists .claude/agents/data-engineer.md
 check "sre installed"            exists .claude/agents/sre.md
 check "typescript-expert installed" exists .claude/agents/languages/typescript-expert.md
+
+# Phase 3 track B: subrecipes are now SKILLS (claude/skills/<name>/SKILL.md),
+# installed to .claude/skills/; the old subrecipe agents must be gone.
+check "language-detection skill installed" exists .claude/skills/language-detection/SKILL.md
+check "asana-sync skill installed"         exists .claude/skills/asana-sync/SKILL.md
+check "tdd-generic skill installed"        exists .claude/skills/tdd-generic/SKILL.md
+check "subrecipe agents retired (source)"  bash -c "[[ ! -d '${REPO}/claude/agents/subrecipes' ]]"
+check "no subrecipe agents installed"      bash -c "[[ ! -d .claude/agents/subrecipes ]]"
+check "no 'subrecipe' wording left in claude/" \
+  bash -c "! grep -rli subrecipe '${REPO}/claude/commands' '${REPO}/claude/agents' '${REPO}/claude/CONVENTIONS.md'"
+wf_no_skill=0
+for f in .claude/commands/wf-*.md; do
+    grep -q '^allowed-tools:.*Skill' "$f" || { printf '       Skill tool missing: %s\n' "$f"; wf_no_skill=$((wf_no_skill+1)); }
+done
+check "all wf-* commands allow the Skill tool" test "$wf_no_skill" -eq 0
 
 # Phase 3 track A: retired in favor of native Claude Code features — must not
 # exist in the source tree (and therefore never install).
@@ -88,6 +104,9 @@ check "wf-feature.md removed"   notexists .claude/commands/wf-feature.md
 check "wf-bugfix.md removed"    notexists .claude/commands/wf-bugfix.md
 check "wf.md router removed"    notexists .claude/commands/wf.md
 check "user command preserved"  exists    .claude/commands/my-own.md
+check "our skills removed"      notexists .claude/skills/language-detection/SKILL.md
+check "asana-sync skill removed" notexists .claude/skills/asana-sync/SKILL.md
+check "user skill preserved"    exists    .claude/skills/my-own-skill/SKILL.md
 
 # ── Plugin packaging: claude/ is a valid plugin bundling agents + commands ─────
 check "plugin manifest exists"  exists "${REPO}/claude/.claude-plugin/plugin.json"

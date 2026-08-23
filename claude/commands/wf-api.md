@@ -1,7 +1,7 @@
 ---
 description: "Design then build an API contract-first: design → implement (TDD) → review → docs"
 argument-hint: "<api/endpoint description>"
-allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Agent
+allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Agent, Skill
 ---
 
 # Workflow: API (contract-first)
@@ -15,7 +15,7 @@ against.
 
 ## Subagents you will dispatch
 - `api-designer` — endpoint/resource design, OpenAPI/schema, error format, pagination, auth.
-- `language-detection` — identify the stack and test command.
+- the `language-detection` **skill** (run inline via the Skill tool) — identify the stack and test command.
 - `test-architect` — RED phase: failing tests derived from the contract.
 - a matching language expert (`python-expert`, `rust-expert`, etc.) — GREEN phase: implement.
 - `code-reviewer` — quality + contract-conformance gate.
@@ -32,7 +32,7 @@ against.
    **GATE:** the contract must cover every endpoint the user asked for before you
    proceed. If ambiguous, ask the user, do not guess the interface.
 
-2. **DETECT.** Dispatch `language-detection`; pick the matching `{lang}-expert` and
+2. **DETECT.** Invoke the `language-detection` skill (Skill tool); pick the matching `{lang}-expert` and
    record the test command. Stop if no expert matches.
 
 3. **IMPLEMENT (test-first).** Drive the same contract-first TDD loop as
@@ -59,7 +59,7 @@ against.
    and any intentional contract changes made during implementation.
 
 ## Asana sync (optional)
-If an Asana project is configured, dispatch the `asana-sync` subrecipe to reflect this
+If an Asana project is configured, invoke the `asana-sync` skill (Skill tool) to reflect this
 run on the relevant Asana task — typically `start`, a `comment` at each gate/finding, and
 `done` (with links) on completion, or `blocked` if a gate stops it. Best-effort and
 non-blocking: a silent no-op if Asana isn't configured or reachable.

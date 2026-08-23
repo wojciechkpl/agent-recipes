@@ -1,7 +1,7 @@
 ---
 description: "Bug fix with a regression test first: reproduce → red → fix → review"
 argument-hint: "<bug description or failing symptom>"
-allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Agent
+allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Agent, Skill
 ---
 
 # Workflow: Bug Fix (regression-test-first)
@@ -43,7 +43,7 @@ not fixed until a test that was RED before is GREEN after.
    fix diff, and the review verdict.
 
 ## Asana sync (optional side-channel)
-If an Asana project is configured (see the `asana-sync` subrecipe), dispatch `asana-sync`:
+If an Asana project is configured (see the `asana-sync` skill), invoke the `asana-sync` skill:
 `start` at step 1, a `comment` at the regression red→green and at the review, `done`
 (+ fix summary) at REPORT. Preflighted and graceful — a silent no-op if Asana isn't
 configured or reachable; it never blocks the fix.

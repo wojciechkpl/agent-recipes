@@ -1,12 +1,13 @@
 # AI Agent Recipes
 
 [![CI](https://github.com/wojciechkpl/agent-recipes/actions/workflows/ci.yml/badge.svg)](https://github.com/wojciechkpl/agent-recipes/actions/workflows/ci.yml)
-![Agents](https://img.shields.io/badge/agents-29-blue)
+![Agents](https://img.shields.io/badge/agents-22-blue)
+![Skills](https://img.shields.io/badge/skills-7-orange)
 ![Workflows](https://img.shields.io/badge/workflows-15_+_%2Fwf_router-blueviolet)
 ![Platforms](https://img.shields.io/badge/platforms-Claude_Code_·_Kiro_·_Goose-informational)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-**29 specialist agents + 15 evidence-gated `/wf-*` workflows for
+**22 specialist agents + 7 skills + 15 evidence-gated `/wf-*` workflows for
 [Claude Code](https://code.claude.com)** — TDD with a real test-author/implementer split,
 review and security gates that only advance on checked results, and an optional
 autonomous mode with a tested safety guard. The same agents ship as
@@ -59,11 +60,11 @@ Then describe a task (`Review the auth module for security issues`) or run a wor
 │   ├── hooks/guard.sh          # PreToolUse hook entrypoint — fast pre-filter
 │   ├── hooks/guard.py          # the guard's decision logic (called by guard.sh)
 │   ├── AUTONOMOUS-MODE.md       # how to use autonomous mode (on/off, scopes, safety)
+│   ├── skills/*/SKILL.md       # 7 shared skills — invoked inline via the Skill tool
 │   └── agents/
 │       ├── *.md                # 14 core agents
 │       ├── languages/*.md      # 6 language experts
-│       ├── specialized/*.md    # 2 specialized agents
-│       └── subrecipes/*.md     # 7 shared subrecipes
+│       └── specialized/*.md    # 2 specialized agents
 │
 ├── goose/                  # Goose agent recipes (YAML)
 │   ├── README.md               # Goose-specific documentation
@@ -140,18 +141,18 @@ For manual installation of agents only:
 
 ```bash
 # Project-level (recommended for teams)
-mkdir -p .claude/agents/languages .claude/agents/specialized .claude/agents/subrecipes
+mkdir -p .claude/agents/languages .claude/agents/specialized .claude/skills
 cp claude/agents/*.md .claude/agents/
 cp claude/agents/languages/*.md .claude/agents/languages/
 cp claude/agents/specialized/*.md .claude/agents/specialized/
-cp claude/agents/subrecipes/*.md .claude/agents/subrecipes/
+cp -R claude/skills/* .claude/skills/
 
 # Or user-level (available in all your projects)
-mkdir -p ~/.claude/agents/languages ~/.claude/agents/specialized ~/.claude/agents/subrecipes
+mkdir -p ~/.claude/agents/languages ~/.claude/agents/specialized ~/.claude/skills
 cp claude/agents/*.md ~/.claude/agents/
 cp claude/agents/languages/*.md ~/.claude/agents/languages/
 cp claude/agents/specialized/*.md ~/.claude/agents/specialized/
-cp claude/agents/subrecipes/*.md ~/.claude/agents/subrecipes/
+cp -R claude/skills/* ~/.claude/skills/
 ```
 
 Agents activate automatically — just describe your task:
@@ -226,20 +227,24 @@ See [goose/TUTORIAL.md](goose/TUTORIAL.md) for 15 detailed use-case walkthroughs
 | Bash Expert | `languages/bash-expert.yaml` | `languages/bash-expert.md` | Defensive scripting, CI/CD pipelines, bats-core testing |
 | TypeScript Expert | `languages/typescript-expert.yaml` | `languages/typescript-expert.md` | Strict TypeScript, React/Node, ESLint/Prettier, vitest/jest |
 
-### Subrecipes / Shared Workflows
+### Skills (Claude) / Subrecipes (Goose & Kiro)
+
+> On Claude Code these are **skills** — shared procedures invoked inline via the
+> Skill tool, no subagent dispatch. Goose and Kiro have no skill primitive, so
+> they render the same content as subrecipe agents.
 | Subrecipe | Goose | Claude | Purpose |
 |-----------|-------|--------|---------|
-| TDD Generic | `subrecipes/tdd-generic.yaml` | `subrecipes/tdd-generic.md` | Red-Green-Refactor cycle for any language |
-| Language Detection | `subrecipes/language-detection.yaml` | `subrecipes/language-detection.md` | Auto-detect project stack |
-| Static Analysis | `subrecipes/static-analysis.yaml` | `subrecipes/static-analysis.md` | Linters, formatters, type checkers |
-| Git Best Practices | `subrecipes/git-best-practices.yaml` | `subrecipes/git-best-practices.md` | Conventional commits, branch naming, PR hygiene |
-| Docker ML Environment | `subrecipes/docker-ml-environment.yaml` | `subrecipes/docker-ml-environment.md` | Containerized ML with GPU support |
-| MLflow Tracking | `subrecipes/mlflow-tracking.yaml` | `subrecipes/mlflow-tracking.md` | Experiment tracking, model registry, HPO |
+| TDD Generic | `subrecipes/tdd-generic.yaml` | `skills/tdd-generic/SKILL.md` | Red-Green-Refactor cycle for any language |
+| Language Detection | `subrecipes/language-detection.yaml` | `skills/language-detection/SKILL.md` | Auto-detect project stack |
+| Static Analysis | `subrecipes/static-analysis.yaml` | `skills/static-analysis/SKILL.md` | Linters, formatters, type checkers |
+| Git Best Practices | `subrecipes/git-best-practices.yaml` | `skills/git-best-practices/SKILL.md` | Conventional commits, branch naming, PR hygiene |
+| Docker ML Environment | `subrecipes/docker-ml-environment.yaml` | `skills/docker-ml-environment/SKILL.md` | Containerized ML with GPU support |
+| MLflow Tracking | `subrecipes/mlflow-tracking.yaml` | `skills/mlflow-tracking/SKILL.md` | Experiment tracking, model registry, HPO |
 | arXiv Search | `subrecipes/arxiv-search.yaml` | — | arXiv API paper discovery |
 | Citation Graph | `subrecipes/citation-graph.yaml` | — | Semantic Scholar citation analysis |
 | Literature Review | `subrecipes/literature-review.yaml` | — | PRISMA-inspired systematic review |
 | Design System | `subrecipes/design-system.yaml` | — | Design tokens, component specs |
-| Asana Sync | `subrecipes/asana-sync.yaml` | `agents/subrecipes/asana-sync.md` | Best-effort Asana task sync — preflight, find-or-create project, resolve assignee, graceful degradation |
+| Asana Sync | `subrecipes/asana-sync.yaml` | `skills/asana-sync/SKILL.md` | Best-effort Asana task sync — preflight, find-or-create project, resolve assignee, graceful degradation |
 
 ### Goose-Only: Coding Agent Context
 A portable orchestration framework for complex multi-step workflows. See [goose/coding_agent_context/](goose/coding_agent_context/).
@@ -655,7 +660,7 @@ All agents enforce these principles regardless of platform:
 
 When adding a new recipe:
 - Create it in both `goose/general/` (YAML) and `claude/agents/` (Markdown)
-- If it's a shared workflow, add it to `subrecipes/` on both platforms
+- If it's a shared procedure, add it as a Claude skill (`claude/skills/<name>/SKILL.md`); Goose/Kiro render it under their `subrecipes/`
 - Update the Agent Catalog tables in all three READMEs
 
 ---

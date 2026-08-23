@@ -1,7 +1,7 @@
 ---
 description: "Measure-driven optimization: baseline → optimize → verify → re-measure → review"
 argument-hint: "<hot path / function / endpoint to optimize>"
-allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Agent
+allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Agent, Skill
 ---
 
 # Workflow: Performance (measure-driven)
@@ -59,7 +59,7 @@ gate. Never optimize on intuition; optimize on numbers.
    result, the diff, and the review verdict. If reverted, say so plainly.
 
 ## Asana sync (optional)
-If an Asana project is configured, dispatch the `asana-sync` subrecipe to reflect this
+If an Asana project is configured, invoke the `asana-sync` skill (Skill tool) to reflect this
 run on the relevant Asana task — typically `start`, a `comment` at each gate/finding, and
 `done` (with links) on completion, or `blocked` if a gate stops it. Best-effort and
 non-blocking: a silent no-op if Asana isn't configured or reachable.

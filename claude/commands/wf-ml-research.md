@@ -1,7 +1,7 @@
 ---
 description: "ML research to reproducible setup: literature review → Docker env → MLflow tracking"
 argument-hint: "<research topic / problem statement>"
-allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Agent
+allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Agent, Skill
 ---
 
 # Workflow: ML Research → Reproducible Setup
@@ -17,8 +17,8 @@ a concrete approach to test.
 ## Subagents you will dispatch
 - `ai-researcher` — literature review, candidate approaches, tradeoff analysis,
   recommendation (has web search).
-- `docker-ml-environment` — reproducible, GPU-capable container for the chosen stack.
-- `mlflow-tracking` — experiment tracking, params/metrics/artifacts, model registry.
+- the `docker-ml-environment` **skill** (run inline via the Skill tool) — reproducible, GPU-capable container for the chosen stack.
+- the `mlflow-tracking` **skill** (run inline via the Skill tool) — experiment tracking, params/metrics/artifacts, model registry.
 
 ## Steps
 
@@ -33,7 +33,7 @@ a concrete approach to test.
    If the question is too broad to converge, report that and ask the user to narrow
    it rather than building an environment for an undecided approach.
 
-2. **ENVIRONMENT.** Dispatch `docker-ml-environment`, pointing it at
+2. **ENVIRONMENT.** Invoke the `docker-ml-environment` skill (Skill tool), pointing it at
    `.wf/ml-approach.md`, to build a reproducible container for the recommended
    stack — **pinned** framework/CUDA versions, the data-access pattern, and a
    deterministic seed convention.
@@ -46,7 +46,7 @@ a concrete approach to test.
      build error, up to 3 attempts, then escalate to the user.
    Never hand a broken environment to the tracking step.
 
-3. **TRACKING.** Dispatch `mlflow-tracking` to wire experiment tracking into the
+3. **TRACKING.** Invoke the `mlflow-tracking` skill (Skill tool) to wire experiment tracking into the
    environment: an experiment, logged params/metrics/artifacts, and a registry entry
    convention. Include a minimal runnable example that logs one dummy run end-to-end.
    **GATE:** verify the dummy run was actually logged — query the tracking backend
@@ -60,7 +60,7 @@ a concrete approach to test.
    State honestly what is scaffolded vs. what still needs real data/compute.
 
 ## Asana sync (optional)
-If an Asana project is configured, dispatch the `asana-sync` subrecipe to reflect this
+If an Asana project is configured, invoke the `asana-sync` skill (Skill tool) to reflect this
 run on the relevant Asana task — typically `start`, a `comment` at each gate/finding, and
 `done` (with links) on completion, or `blocked` if a gate stops it. Best-effort and
 non-blocking: a silent no-op if Asana isn't configured or reachable.

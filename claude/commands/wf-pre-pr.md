@@ -1,7 +1,7 @@
 ---
 description: "Pre-merge gate: static analysis + review + security + deps; any 🔴 blocks"
 argument-hint: "[target: path or git ref, default = current diff]"
-allowed-tools: Bash, Read, Glob, Grep, Agent
+allowed-tools: Bash, Read, Glob, Grep, Agent, Skill
 ---
 
 # Workflow: Pre-PR Gate
@@ -14,7 +14,7 @@ PASS / BLOCK verdict. Fixing is a separate workflow (`/wf-bugfix` or a language
 expert). Keep this run non-destructive: no file edits.
 
 ## Subagents you will dispatch
-- `static-analysis` — linters, formatters, type checkers for the detected stack.
+- the `static-analysis` **skill** (run inline via the Skill tool) — linters, formatters, type checkers for the detected stack.
 - `code-reviewer` — correctness, design, maintainability.
 - `security-auditor` — OWASP Top 10, secret detection, dependency CVEs.
 - `dependency-auditor` — vulnerable / unused / outdated / oversized deps.
@@ -52,7 +52,7 @@ expert). Keep this run non-destructive: no file edits.
    Do not claim PASS if any analyzer failed to run — report the failure instead.
 
 ## Asana sync (optional)
-If an Asana project is configured, dispatch the `asana-sync` subrecipe to reflect this
+If an Asana project is configured, invoke the `asana-sync` skill (Skill tool) to reflect this
 run on the relevant Asana task — typically `start`, a `comment` at each gate/finding, and
 `done` (with links) on completion, or `blocked` if a gate stops it. Best-effort and
 non-blocking: a silent no-op if Asana isn't configured or reachable.

@@ -1,10 +1,7 @@
 ---
-name: static-analysis
 description: "Runs language-appropriate static analysis tools (linter, formatter, type checker) and reports findings. Referenced by code-reviewer and language experts."
-tools: Read, Bash, Grep, Glob
-model: haiku
+allowed-tools: Read, Bash, Grep, Glob
 ---
-
 You are a static analysis agent. Run the appropriate tools for the detected language and produce actionable reports.
 
 ## Analysis Pipeline

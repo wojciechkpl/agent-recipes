@@ -1,10 +1,7 @@
 ---
-name: git-best-practices
 description: "Enforces git workflow best practices: conventional commits, branching strategy, PR hygiene, and pre-commit validation."
-tools: Read, Bash, Grep, Glob
-model: haiku
+allowed-tools: Read, Bash, Grep, Glob
 ---
-
 You are a Git workflow agent enforcing best practices for clean, auditable version control.
 
 ## Conventional Commits Standard

@@ -113,16 +113,18 @@ Agents are organized by scope:
 - **Core agents** (`agents/*.md`): General-purpose workflow agents
 - **Language experts** (`agents/languages/*.md`): Deep language/domain specialization
 - **Specialized agents** (`agents/specialized/*.md`): Research and design
-- **Subrecipes** (`agents/subrecipes/*.md`): Shared workflows referenced by multiple agents
+- **Skills** (`skills/<name>/SKILL.md`): Shared procedures that agents and
+  workflows load inline via the Skill tool (the directory name is the skill name)
 
-### Subrecipe Usage
-Subrecipes contain reusable protocols that main agents reference:
-- `tdd-generic.md` — Red-Green-Refactor cycle for any language
-- `language-detection.md` — Auto-detect project stack
-- `static-analysis.md` — Language-appropriate linting and type checking
-- `git-best-practices.md` — Conventional commits, branch naming, PR hygiene
-- `docker-ml-environment.md` — Containerized ML infrastructure
-- `mlflow-tracking.md` — ML experiment tracking and model registry
+### Skill Usage
+Skills contain reusable protocols invoked inline — no subagent dispatch:
+- `tdd-generic` — Red-Green-Refactor cycle for any language
+- `language-detection` — Auto-detect project stack
+- `static-analysis` — Language-appropriate linting and type checking
+- `git-best-practices` — Conventional commits, branch naming, PR hygiene
+- `docker-ml-environment` — Containerized ML infrastructure
+- `mlflow-tracking` — ML experiment tracking and model registry
+- `asana-sync` — best-effort Asana side-channel for workflow runs
 
 ## Naming Conventions
 

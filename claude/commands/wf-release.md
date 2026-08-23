@@ -1,7 +1,7 @@
 ---
 description: "Cut a release: pre-flight gate → changelog → version bump → tag (with confirmation)"
 argument-hint: "<version, e.g. 1.4.0 | major|minor|patch | auto>"
-allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Agent
+allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Agent, Skill
 ---
 
 # Workflow: Release
@@ -16,7 +16,7 @@ pushing**. You dispatch specialists and own the gates.
 - `dependency-auditor` + `security-auditor` — pre-release risk gate.
 - `documentation-agent` — changelog from commits since the last release.
 - `sre` — (optional) build/publish the release artifact.
-- the `git-best-practices` subrecipe — conventional tag/commit hygiene.
+- the `git-best-practices` **skill** (run inline via the Skill tool) — conventional tag/commit hygiene.
 
 ## Steps
 1. **PRE-FLIGHT.** Run the full test suite (must be green). Dispatch `security-auditor`
@@ -38,7 +38,7 @@ pushing**. You dispatch specialists and own the gates.
    tag/push/publish commands the user can run (or that you ran once confirmed).
 
 ## Asana sync (optional)
-If an Asana project is configured, dispatch the `asana-sync` subrecipe to reflect this
+If an Asana project is configured, invoke the `asana-sync` skill (Skill tool) to reflect this
 run on the relevant Asana task — typically `start`, a `comment` at each gate/finding, and
 `done` (with links) on completion, or `blocked` if a gate stops it. Best-effort and
 non-blocking: a silent no-op if Asana isn't configured or reachable.
