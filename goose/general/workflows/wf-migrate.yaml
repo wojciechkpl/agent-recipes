@@ -65,7 +65,6 @@ extensions:
     bundled: true
 
 sub_recipes:
-    description: "Read-only discovery of the complete list of affected sites, incl. tricky variants"
   - name: "python_expert"
     path: "../languages/python-expert.yaml"
     description: "Apply the transform (run if stack is Python)"

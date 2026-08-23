@@ -55,7 +55,6 @@ extensions:
     bundled: true
 
 sub_recipes:
-    description: "Read-only investigation producing a structured analysis with file:line evidence"
   - name: "documentation_agent"
     path: "../documentation-agent.yaml"
     description: "Turn the analysis into a durable ARCHITECTURE.md / onboarding guide"

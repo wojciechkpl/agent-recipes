@@ -68,7 +68,6 @@ extensions:
     bundled: true
 
 sub_recipes:
-    description: "Optional: map the target's behavior and dependencies before refactoring"
   - name: "test_architect"
     path: "../test-architect.yaml"
     description: "GUARD: write characterization tests pinning current behavior when coverage is thin"
