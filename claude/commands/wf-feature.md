@@ -71,3 +71,35 @@ to mirror this run: `start` (task → In Progress) at step 1, a `comment` after 
 (RED / GREEN / REVIEW), and `done` (+ PR link) at REPORT. It preflights availability and
 **degrades gracefully** — if Asana isn't configured or is unreachable it's a silent no-op
 and the run is unaffected. An Asana error must never fail the build.
+
+## Run state & bounded retries (uniform protocol)
+
+This workflow is **resumable** and its gate loops are **bounded**. Maintain
+`.wf/state.json` throughout the run:
+
+1. **START.** If `.wf/state.json` exists with `"status": "in_progress"`:
+   - same `workflow` → show its `phase`, `gates`, and `next`, then ask the user
+     ONCE: **resume** from the recorded phase or **start over** (reset the file).
+     Trust recorded gate results only if the evidence still holds (e.g. re-run
+     the test command rather than assuming a phase is still green).
+   - different `workflow` → warn the user and ask before overwriting.
+2. **AFTER EVERY GATE** — pass or fail — rewrite the file:
+   ```json
+   {"workflow": "wf-feature", "task": "<original $ARGUMENTS>",
+    "phase": "<current phase>", "status": "in_progress",
+    "gates": {"<PHASE>": {"result": "pass|fail", "attempts": 1,
+                          "evidence": "<one line: what was actually checked>"}},
+    "next": "<the next concrete action>"}
+   ```
+3. **ON FINISH** set `"status": "done"`. When stopping early, set
+   `"status": "stopped"` plus a `"reason"`. The file is transient — safe to
+   delete; suggest adding `.wf/` to the project's `.gitignore` if it isn't.
+4. **AFTER ANY CONTEXT COMPACTION**, re-read `.wf/state.json` before
+   dispatching anything else.
+
+**Retry contract:** every loop in the steps above ("dispatch again", "loop until
+APPROVE", re-measure cycles) is bounded to **3 attempts per phase** unless the
+step names its own limit, counted in `gates.<PHASE>.attempts`. On the final
+failed attempt: STOP, write `"status": "stopped"`, and report the full failure
+history to the user. Never advance past a failing gate, and never loop past the
+cap — a bounded honest stop beats an unbounded token burn.

@@ -24,6 +24,14 @@
   specialists via the `Agent` tool, one phase at a time, and owns the gate logic.
 - A "gate" is a stop/loop condition the orchestrator enforces between phases
   (e.g. "tests must be red before GREEN", "code-reviewer must APPROVE").
+- **Resumable + bounded (uniform protocol).** Every Claude workflow ends with the
+  same **"Run state & bounded retries"** section: it maintains `.wf/state.json`
+  (workflow, task, phase, per-gate result/attempts/evidence, next action), offers
+  to resume an interrupted run on start, re-reads the state after context
+  compaction, and bounds every gate loop to **3 attempts per phase** (unless a
+  step names its own limit) before stopping with the full failure history.
+  `tests/test_setup_commands.sh` asserts every `wf-*.md` carries the block and
+  names itself in it; the `/wf` router also offers to resume an in-progress run.
 - **Commit each phase's verified output before starting the next.** The orchestrator
   owns the commits; specialist agents leave changes in the tree (they don't commit).
   Don't let several phases' uncommitted changes accumulate — a branch switch or a

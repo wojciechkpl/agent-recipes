@@ -404,6 +404,13 @@ result:
   failed to run — a broken scan never reads as a clean pass.
 - `/wf-perf` commits an improvement threshold *before* the change exists and **reverts**
   if the re-measurement doesn’t beat it — correctness is never traded for speed.
+- Every workflow is **resumable**: it checkpoints `.wf/state.json` after each gate
+  (phase, per-gate result/attempts/evidence, next action), offers to resume an
+  interrupted run on restart — `/wf` alone also offers this — and re-reads the state
+  after context compaction, so a killed session doesn't lose the run.
+- Every gate loop is **bounded**: at most 3 fix attempts per phase (unless a step
+  names its own limit), then an honest STOP with the full failure history —
+  persistence without unbounded token burn.
 
 ### Examples
 

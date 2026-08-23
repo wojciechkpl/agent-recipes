@@ -60,6 +60,20 @@ inst_count=$(find .claude/commands -maxdepth 1 -name 'wf-*.md' | wc -l | tr -d '
 check "all ${src_count} wf-* commands installed" test "$src_count" -eq "$inst_count"
 check "full workflow set present (phase 5)" test "$src_count" -ge 15
 
+# Every workflow must carry the uniform run-state/bounded-retry protocol AND
+# name itself correctly in it (guards new workflows pasted without the block,
+# or with another workflow's name left in the copied JSON example).
+proto_bad=0
+for f in .claude/commands/wf-*.md; do
+    name="$(basename "$f" .md)"
+    if ! grep -q 'Run state & bounded retries' "$f" || ! grep -q "\"workflow\": \"$name\"" "$f"; then
+        printf '       protocol missing/misnamed: %s\n' "$f"
+        proto_bad=$((proto_bad + 1))
+    fi
+done
+check "all wf-* declare the run-state protocol" test "$proto_bad" -eq 0
+check "router offers to resume in-progress runs" grep -q 'state.json' .claude/commands/wf.md
+
 # ── Uninstall (precise: wf-* only) ────────────────────────────
 "$SETUP" --uninstall >/dev/null
 

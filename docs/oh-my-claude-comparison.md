@@ -122,7 +122,14 @@ If after trial you love an omc mode, the play is still *adopt the pattern into a
 
 ## 6. Decision & roadmap
 
-> **Status (2026-08-23): Phase 1 implemented.** `.claude-plugin/marketplace.json`
+> **Status (2026-08-23): Phases 1 and 2 implemented.** Phase 2: a uniform
+> **"Run state & bounded retries"** protocol appended to all 16 `wf-*.md`
+> commands — `.wf/state.json` checkpointing after every gate, resume-on-start
+> (also offered by the `/wf` router), re-read after context compaction, and a
+> 3-attempts-per-phase retry cap with an honest stop + failure history —
+> enforced by the setup contract test (26 assertions).
+>
+> **Phase 1.** `.claude-plugin/marketplace.json`
 > (install via `/plugin marketplace add wojciechkpl/agent-recipes`), the `/wf`
 > router command (`claude/commands/wf.md`, installed/uninstalled by `setup.sh`,
 > covered by the contract test), CI (`.github/workflows/ci.yml`: shellcheck at

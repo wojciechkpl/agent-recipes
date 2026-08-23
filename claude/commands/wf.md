@@ -14,23 +14,31 @@ and you do NOT dispatch agents — the chosen workflow owns all orchestration.
 
 ## Steps
 
-1. **No task given?** If `$ARGUMENTS` is empty, print the routing table below as
-   a compact list (command — when to use it) and stop.
+1. **No task given?** If `$ARGUMENTS` is empty: check `.wf/state.json` first —
+   if it records an in-progress run, offer to resume it (see step 2). Otherwise
+   print the routing table below as a compact list (command — when to use it)
+   and stop.
 
-2. **Classify.** Match the task against the routing table, top to bottom; first
+2. **In-progress run?** If `.wf/state.json` has `"status": "in_progress"`, say
+   which workflow and phase it recorded and offer to resume: on yes, invoke that
+   `workflow` with its saved `task` (its own run-state protocol handles the
+   actual resume). If the user declines — or the new task is clearly unrelated —
+   continue below; the chosen workflow will handle the stale file.
+
+3. **Classify.** Match the task against the routing table, top to bottom; first
    confident match wins. Peek at context only if it settles the choice cheaply
    (e.g. does `.wf/design.md` or `.wf/prd.md` exist? is there a failing test
    named in the task?).
 
-3. **Route.** Announce the choice in ONE line — `Routing to /wf-<name>: <ten-word
+4. **Route.** Announce the choice in ONE line — `Routing to /wf-<name>: <ten-word
    reason>` — then invoke the workflow via the SlashCommand tool, passing the
    task through verbatim (e.g. `/wf-feature $ARGUMENTS`). If the SlashCommand
    tool is unavailable, tell the user the exact command to run instead.
 
-4. **Ambiguous?** If two workflows genuinely fit, ask the user ONE short
+5. **Ambiguous?** If two workflows genuinely fit, ask the user ONE short
    either/or question, then route. Never ask more than one question.
 
-5. **No workflow fits?** If the task is a single focused action (review one
+6. **No workflow fits?** If the task is a single focused action (review one
    file, explain an error, rename a symbol), say so and name the matching
    *agent* instead (e.g. `@agent-code-reviewer`) — a workflow would be overhead.
 
