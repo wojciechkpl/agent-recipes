@@ -59,7 +59,7 @@ and you do NOT dispatch agents — the chosen workflow owns all orchestration.
 | Repo-wide rename/codemod touching many files | `/wf-migrate` |
 | Upgrade/audit dependencies safely | `/wf-upgrade-deps` |
 | Cut/tag/ship a release | `/wf-release` |
-| Big divisible task to run as parallel agent streams | `/wf-fanout` |
+| Big divisible task wanting parallel agent streams | no `/wf-*` — tell Claude to “use a workflow” (native multi-agent orchestration; it requires that explicit opt-in) |
 | Open ML question → reproducible tracked setup | `/wf-ml-research` |
 | A named ML hypothesis to run against a baseline | `/wf-experiment` |
 

@@ -17,7 +17,7 @@ instructions: |
   ## Target / goal: {{ target }}
 
   ## Sub-recipes you will dispatch
-  - `analyst` — (optional) map the target's behavior and dependencies first.
+  - (optional: map the target's behavior and dependencies directly first — read-only)
   - `test_architect` — add **characterization tests** if existing coverage is thin.
   - a matching language expert (`python_expert`, `typescript_expert`, `rust_expert`,
     `flutter_expert`, `postgresql_expert`, `bash_expert`) — the refactor. Run the ONE that
@@ -68,8 +68,6 @@ extensions:
     bundled: true
 
 sub_recipes:
-  - name: "analyst"
-    path: "../analyst.yaml"
     description: "Optional: map the target's behavior and dependencies before refactoring"
   - name: "test_architect"
     path: "../test-architect.yaml"

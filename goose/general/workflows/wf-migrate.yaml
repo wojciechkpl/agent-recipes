@@ -17,7 +17,7 @@ instructions: |
   ## Migration: {{ migration }}
 
   ## Sub-recipes you will dispatch
-  - `analyst` — discover and enumerate every affected site (read-only).
+  - (site discovery happens directly in the main run — read-only)
   - a matching language expert (`python_expert`, `typescript_expert`, `rust_expert`,
     `flutter_expert`, `postgresql_expert`, `bash_expert`) — apply the transform. Run the
     ONE that matches the project stack. Use **worktree isolation** so parallel transforms
@@ -25,11 +25,11 @@ instructions: |
   - `code_reviewer` — review the consolidated change.
 
   ## Steps (enforce every GATE faithfully)
-  1. **DISCOVER.** Use grep/glob and dispatch `analyst` to produce the **complete list of
+  1. **DISCOVER.** Use grep/glob and investigate directly to produce the **complete list of
      affected sites** (file:line) plus any tricky variants the naive search misses
      (aliases, re-exports, dynamic uses).
      **You (the orchestrator) capture the returned list to `.wf/migration-sites.md`** —
-     the analyst is read-only.
+     the discovery is read-only.
      **GATE:** establish a green test baseline first. If the suite errors for a toolchain
      reason (not a real failure), stop and report; if it's legitimately not green, STOP —
      you can't distinguish migration breakage from pre-existing breakage.
@@ -65,8 +65,6 @@ extensions:
     bundled: true
 
 sub_recipes:
-  - name: "analyst"
-    path: "../analyst.yaml"
     description: "Read-only discovery of the complete list of affected sites, incl. tricky variants"
   - name: "python_expert"
     path: "../languages/python-expert.yaml"

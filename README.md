@@ -1,12 +1,12 @@
 # AI Agent Recipes
 
 [![CI](https://github.com/wojciechkpl/agent-recipes/actions/workflows/ci.yml/badge.svg)](https://github.com/wojciechkpl/agent-recipes/actions/workflows/ci.yml)
-![Agents](https://img.shields.io/badge/agents-30-blue)
-![Workflows](https://img.shields.io/badge/workflows-16_+_%2Fwf_router-blueviolet)
+![Agents](https://img.shields.io/badge/agents-29-blue)
+![Workflows](https://img.shields.io/badge/workflows-15_+_%2Fwf_router-blueviolet)
 ![Platforms](https://img.shields.io/badge/platforms-Claude_Code_·_Kiro_·_Goose-informational)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-**30 specialist agents + 16 evidence-gated `/wf-*` workflows for
+**29 specialist agents + 15 evidence-gated `/wf-*` workflows for
 [Claude Code](https://code.claude.com)** — TDD with a real test-author/implementer split,
 review and security gates that only advance on checked results, and an optional
 autonomous mode with a tested safety guard. The same agents ship as
@@ -23,7 +23,7 @@ Then describe a task (`Review the auth module for security issues`) or run a wor
 (`/wf-feature add a rate limiter` — or just `/wf <task>` and let the router pick).
 
 > **Claude Code is the primary, recommended platform.** It's the only one with the full
-> **workflow layer** — 16 `/wf-*` orchestration commands that sequence the agents with
+> **workflow layer** — 15 `/wf-*` orchestration commands that sequence the agents with
 > gates — plus the one-command **plugin** install and the §1–§9 conventions. Kiro (JSON)
 > and Goose (YAML) share the same core agents and standards; only the format differs.
 
@@ -60,7 +60,7 @@ Then describe a task (`Review the auth module for security issues`) or run a wor
 │   ├── hooks/guard.py          # the guard's decision logic (called by guard.sh)
 │   ├── AUTONOMOUS-MODE.md       # how to use autonomous mode (on/off, scopes, safety)
 │   └── agents/
-│       ├── *.md                # 15 core agents
+│       ├── *.md                # 14 core agents
 │       ├── languages/*.md      # 6 language experts
 │       ├── specialized/*.md    # 2 specialized agents
 │       └── subrecipes/*.md     # 7 shared subrecipes
@@ -69,10 +69,10 @@ Then describe a task (`Review the auth module for security issues`) or run a wor
 │   ├── README.md               # Goose-specific documentation
 │   ├── TUTORIAL.md             # Step-by-step Goose usage guide
 │   ├── general/
-│   │   ├── *.yaml              # 17 core recipes
+│   │   ├── *.yaml              # 16 core recipes
 │   │   ├── languages/*.yaml    # 6 language experts
 │   │   ├── subrecipes/*.yaml   # 11 shared subrecipes
-│   │   └── workflows/*.yaml    # 16 workflow recipes (Goose renderings of /wf-*)
+│   │   └── workflows/*.yaml    # 15 workflow recipes (Goose renderings of /wf-*)
 │   └── coding_agent_context/   # Portable orchestration framework
 │       ├── missions/           # Step-by-step workflow instructions
 │       ├── roles/              # Sub-agent identity definitions
@@ -83,7 +83,7 @@ Then describe a task (`Review the auth module for security issues`) or run a wor
 │   ├── README.md               # Kiro-specific documentation
 │   ├── setup-kiro.sh           # Installation script
 │   └── agents/
-│       ├── *.json              # 15 core agents
+│       ├── *.json              # 14 core agents
 │       ├── languages/*.json    # 6 language experts
 │       ├── specialized/*.json  # 2 specialized agents
 │       └── subrecipes/*.json   # 7 shared subrecipes
@@ -196,7 +196,7 @@ See [goose/TUTORIAL.md](goose/TUTORIAL.md) for 15 detailed use-case walkthroughs
 
 ## Agent Catalog
 
-### Core Agents (17)
+### Core Agents (16)
 | Agent | Goose | Claude | Purpose |
 |-------|-------|--------|---------|
 | Code Reviewer | `general/code-reviewer.yaml` | `agents/code-reviewer.md` | Correctness, security, performance, maintainability review |
@@ -212,7 +212,6 @@ See [goose/TUTORIAL.md](goose/TUTORIAL.md) for 15 detailed use-case walkthroughs
 | AI/ML Researcher | `general/ai-researcher.yaml` | `agents/specialized/ai-researcher.md` | Literature review, ML design, math formulation, MLflow |
 | UX Designer | `general/ux-designer.yaml` | `agents/specialized/ux-designer.md` | Journey mapping, wireframes, design systems, WCAG 2.2 |
 | Product Manager | `general/product-manager.yaml` | `agents/product-manager.md` | PRDs, user stories, acceptance criteria, prioritization (RICE/MoSCoW), success metrics |
-| Analyst | `general/analyst.yaml` | `agents/analyst.md` | Read-only codebase investigator — structure, data flow, risks |
 | Data Engineer | `general/data-engineer.yaml` | `agents/data-engineer.md` | Data transforms/pipelines, Polars/Rust-first, schema validation |
 | SRE / DevOps | `general/sre.yaml` | `agents/sre.md` | CI/CD, Dockerfiles, IaC, observability, deployment |
 | Technical Writer | `general/technical-writer.yaml` | `agents/technical-writer.md` | Long-form writing — blogs, RFCs, tutorials, paper drafts |
@@ -296,7 +295,7 @@ Then just type the command in Claude Code:
 /wf-bugfix median() returns the wrong value for even-length lists
 ```
 
-**Don't want to memorize 16 commands?** Use the **`/wf` router** — describe the task and
+**Don't want to memorize 15 commands?** Use the **`/wf` router** — describe the task and
 it routes to the right workflow (asking at most one question when two genuinely fit):
 
 ```
@@ -304,7 +303,7 @@ it routes to the right workflow (asking at most one question when two genuinely 
 /wf                                                                # no args → prints the routing table
 ```
 
-### The 16 workflows
+### The 15 workflows
 
 **Core dev loop**
 
@@ -312,7 +311,7 @@ it routes to the right workflow (asking at most one question when two genuinely 
 |---------|--------------|------------------------|
 | `/wf-feature` | Build a feature via strict TDD | detect → `architect`/`api-designer` → `test-architect` (RED) → `{lang}-expert` (GREEN) → `code-reviewer` → `documentation-agent` |
 | `/wf-bugfix` | Fix a bug, regression-test first | `debugger` (writes failing test) → `{lang}-expert` (fix) → `code-reviewer` |
-| `/wf-refactor` | Behavior-preserving refactor under a test guard | `analyst` → `test-architect` (characterization) → `{lang}-expert` → `code-reviewer` |
+| `/wf-refactor` | Behavior-preserving refactor under a test guard | `Explore` (built-in) → `test-architect` (characterization) → `{lang}-expert` → `code-reviewer` |
 | `/wf-pre-pr` | Pre-merge quality gate | `static-analysis` + `code-reviewer` + `security-auditor` + `dependency-auditor` (parallel) |
 | `/wf-perf` | Measure-driven optimization | `performance-optimizer` (baseline) → `{lang}-expert` → re-measure → `code-reviewer` |
 
@@ -329,11 +328,10 @@ it routes to the right workflow (asking at most one question when two genuinely 
 
 | Command | What it does | Agents it orchestrates |
 |---------|--------------|------------------------|
-| `/wf-understand` | Map/onboard an unfamiliar codebase | `analyst` (read-only) → `documentation-agent` |
-| `/wf-migrate` | Large-scale codemod | `analyst` (discover) → `{lang}-expert` (worktree isolation) → `code-reviewer` |
+| `/wf-understand` | Map/onboard an unfamiliar codebase | `Explore` (built-in, read-only) → `documentation-agent` |
+| `/wf-migrate` | Large-scale codemod | `Explore` (built-in; discover) → `{lang}-expert` (worktree isolation) → `code-reviewer` |
 | `/wf-upgrade-deps` | Guarded one-at-a-time dependency upgrade | `dependency-auditor` → `{lang}-expert` → `code-reviewer` |
 | `/wf-release` | Cut a release (gated, confirmed) | `security-auditor` + `dependency-auditor` → `documentation-agent` → `sre` → `git-best-practices` |
-| `/wf-fanout` | Run a task as parallel, isolated agent streams | decompose → `Agent` ×N (non-overlapping files / worktree) → per-stream verify+commit → reconcile |
 
 **ML**
 

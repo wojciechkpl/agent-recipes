@@ -85,8 +85,8 @@ each to the codebase. Dispatch in parallel where independent:
 - `debugger` — for crashes and "X is broken" themes: *"Users report <symptom>
   on <version/screen>. Locate the responsible code path and the most likely
   root cause. Do NOT fix — report file:line, cause hypothesis, and confidence."*
-- `analyst` — for UX-friction themes: locate the screen/flow and what drives
-  the behavior users dislike.
+- the built-in `Explore` agent — for UX-friction themes: locate the screen/flow
+  and what drives the behavior users dislike.
 
 Cross-reference known context first: recent commits touching the affected
 screens, open issues, CLAUDE.md known-gotchas — a reported symptom may already

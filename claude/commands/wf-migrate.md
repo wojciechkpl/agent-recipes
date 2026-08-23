@@ -14,16 +14,17 @@ isolation, verify per-site, and never silently skip. You dispatch specialists an
 the gates.
 
 ## Subagents you will dispatch
-- `analyst` — discover and enumerate every affected site (read-only).
+- the built-in `Explore` agent — discover and enumerate every affected site (read-only).
 - a matching language expert (`python-expert`, `typescript-expert`, etc.) — apply the
   transform. Use **worktree isolation** so parallel transforms don't conflict.
 - `code-reviewer` — review the consolidated change.
 
 ## Steps
-1. **DISCOVER.** Use `grep`/`glob` and dispatch `analyst` to produce the **complete
-   list of affected sites** (file:line) plus any tricky variants the naive search
-   misses (aliases, re-exports, dynamic uses). **You (the orchestrator) capture the
-   returned list to `.wf/migration-sites.md`** — the analyst is read-only.
+1. **DISCOVER.** Use `grep`/`glob` and dispatch the built-in `Explore` agent
+   (breadth: very thorough) to produce the **complete list of affected sites**
+   (file:line) plus any tricky variants the naive search misses (aliases,
+   re-exports, dynamic uses). **You (the orchestrator) capture the returned list
+   to `.wf/migration-sites.md`** — Explore is read-only.
    **GATE:** establish a green test baseline first. If the suite errors for a
    toolchain reason (not a real failure), stop and report; if it's legitimately not
    green, stop — you can't distinguish migration breakage from pre-existing breakage.

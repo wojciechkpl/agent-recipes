@@ -42,11 +42,18 @@ check "agents still installed"  exists .claude/agents/code-reviewer.md
 check "test-architect installed" exists .claude/agents/test-architect.md
 check "architect installed"      exists .claude/agents/architect.md
 check "product-manager installed" exists .claude/agents/product-manager.md
-check "analyst installed"        exists .claude/agents/analyst.md
 check "data-engineer installed"  exists .claude/agents/data-engineer.md
 check "sre installed"            exists .claude/agents/sre.md
 check "typescript-expert installed" exists .claude/agents/languages/typescript-expert.md
-check "asana-sync installed"     exists .claude/agents/subrecipes/asana-sync.md
+
+# Phase 3 track A: retired in favor of native Claude Code features — must not
+# exist in the source tree (and therefore never install).
+check "analyst retired (source)"   notexists "${REPO}/claude/agents/analyst.md"
+check "analyst retired (install)"  notexists .claude/agents/analyst.md
+check "wf-fanout retired (source)" notexists "${REPO}/claude/commands/wf-fanout.md"
+check "wf-fanout retired (install)" notexists .claude/commands/wf-fanout.md
+check "no lingering analyst dispatch in commands" \
+  bash -c "! grep -rl 'Dispatch \`analyst\`' '${REPO}/claude/commands/'"
 
 # Install must disable the Claude git co-author trailer in settings.json.
 check "settings.json created"    exists .claude/settings.json

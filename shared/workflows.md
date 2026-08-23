@@ -53,22 +53,21 @@
 | `wf-perf` | Measure-driven performance optimization | `performance-optimizer` (baseline) → `{lang}-expert` (optimize) → `code-reviewer` → `performance-optimizer` (re-measure) | optimized result MUST beat baseline or revert |
 | `wf-new-project` | Scaffold a new project | `project-bootstrapper` → `test-architect` (RED smoke) → `{lang}-expert` (GREEN) → `documentation-agent` | toolchain must run; scaffold certified by a smoke test going red→green |
 | `wf-ml-research` | ML research → reproducible setup | `ai-researcher` → `docker-ml-environment` → `mlflow-tracking` | approach must be named before ENV; image must build + import (host-limit → stop, defect → retry ≤3); tracking run must be verifiably logged |
-| `wf-refactor` | Behavior-preserving refactor under a test guard | `analyst` (opt) → `test-architect` (characterization tests) → `{lang}-expert` (refactor) → `code-reviewer` | green suite before AND after; behavior change → revert to checkpoint |
+| `wf-refactor` | Behavior-preserving refactor under a test guard | `Explore` (built-in, opt) → `test-architect` (characterization tests) → `{lang}-expert` (refactor) → `code-reviewer` | green suite before AND after; behavior change → revert to checkpoint |
 | `wf-upgrade-deps` | Guarded dependency upgrade | `dependency-auditor` → `{lang}-expert` (one bump at a time) → `code-reviewer` | green baseline required; each dep kept only if suite stays green, else reverted + deferred |
 | `wf-experiment` | Run + compare an ML hypothesis | `ai-researcher` → `data-engineer` → `{lang}-expert` → `mlflow-tracking` (+ `docker-ml-environment`) | falsifiable hypothesis + 1 primary metric; conclusion from logged runs only; honest negative results |
-| `wf-understand` | Map/onboard an unfamiliar codebase | `analyst` (read-only) → `documentation-agent` | analysis must cite `file:line` evidence; read-only except docs |
+| `wf-understand` | Map/onboard an unfamiliar codebase | `Explore` (built-in, read-only) → `documentation-agent` | analysis must cite `file:line` evidence; read-only except docs |
 | `wf-spec` | Idea → PRD → design + plan | `product-manager` (PRD) → (`ai-researcher` opt) → `architect` | clarify once; PRD states measurable success + MVP scope; design covers every acceptance criterion; feeds `wf-feature` |
 | `wf-release` | Cut a release | `security-auditor` + `dependency-auditor` → `documentation-agent` → (`sre`) → `git-best-practices` | any 🔴 / failing tests BLOCK; no tag/push without user confirmation |
-| `wf-migrate` | Large-scale codemod | `analyst` (discover sites) → `{lang}-expert` (transform, worktree isolation) → `code-reviewer` | green baseline; per-site verify; deferred/skipped sites reported, never silent |
+| `wf-migrate` | Large-scale codemod | `Explore` (built-in; discover sites) → `{lang}-expert` (transform, worktree isolation) → `code-reviewer` | green baseline; per-site verify; deferred/skipped sites reported, never silent |
 | `wf-db-change` | Schema change with a safe migration | `postgresql-expert` (forward + rollback) → `test-architect` → (`{lang}-expert`) → `code-reviewer` | rollback must work on scratch DB; no blocking migration on large tables; no prod apply without confirmation |
-| `wf-fanout` | Run a task as parallel, isolated agent streams | decompose → `Agent` ×N in parallel (non-overlapping files or `isolation: worktree`) → per-stream verify+commit → reconcile (+ optional `wf-pre-pr`) | streams touch non-overlapping files; verify `git branch --show-current` before each commit; commit each stream before the next; merge base in before expecting CI green |
 
 ## New supporting agents
 
 These agents back the workflows above:
 
 - **`product-manager`** — PRD, prioritization (RICE/MoSCoW), success metrics (powers `wf-spec`).
-- **`analyst`** — read-only codebase investigator (powers `wf-understand`, `wf-migrate`; context for `wf-refactor`).
+- *(retired)* `analyst` — replaced by the built-in **Explore** agent in `wf-understand` / `wf-migrate` / `wf-refactor`; the structured-report contract now lives in those workflows' dispatch prompts.
 - **`data-engineer`** — data transforms/pipelines, Polars/Rust-first (powers `wf-experiment`).
 - **`sre`** — CI/CD, containers, IaC, deployment (powers `wf-release`).
 - **`technical-writer`** — long-form writing (blogs, RFCs, papers); complements `documentation-agent`.
