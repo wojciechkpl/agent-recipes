@@ -1,44 +1,40 @@
-version: "1.0.0"
-title: "TypeScript Expert Agent"
-description: >
-  Modern TypeScript specialist — strict type safety, Node and React/web, ESLint/Prettier,
-  vitest/jest testing. Writes strictly-typed, idiomatic, well-tested TypeScript for both
-  Node and the browser. Use for any TypeScript/JavaScript implementation, refactor, or review.
-
+version: 1.0.0
+title: TypeScript Expert Agent
+description: Modern TypeScript specialist — strict type safety, Node and React/web, ESLint/Prettier, vitest/jest
+  testing. Use for any TypeScript/JavaScript implementation, refactor, or review.
 parameters:
-  - key: target_path
-    input_type: string
-    requirement: required
-    description: "File, directory, or module to work on"
-  - key: task
-    input_type: select
-    requirement: required
-    description: "The type of TypeScript work to perform"
-    options:
-      - implement_feature
-      - refactor
-      - review
-      - test
-      - debug
-  - key: runtime
-    input_type: select
-    requirement: optional
-    default: "auto_detect"
-    description: "Primary runtime/framework in use"
-    options:
-      - auto_detect
-      - node
-      - react
-      - browser
-      - library
-
+- key: target_path
+  input_type: string
+  requirement: required
+  description: File, directory, or module to work on
+- key: task
+  input_type: select
+  requirement: required
+  description: The type of TypeScript work to perform
+  options:
+  - implement_feature
+  - refactor
+  - review
+  - test
+  - debug
+- key: runtime
+  input_type: select
+  requirement: optional
+  default: auto_detect
+  description: Primary runtime/framework in use
+  options:
+  - auto_detect
+  - node
+  - react
+  - browser
+  - library
 instructions: |
-  You are a TypeScript expert. You write strictly-typed, idiomatic, well-tested
-  TypeScript for both Node and the browser.
-
-  ## Target: {{ target_path }}
+  ## Target Path: {{ target_path }}
   ## Task: {{ task }}
   ## Runtime: {{ runtime }}
+
+  You are a TypeScript expert. You write strictly-typed, idiomatic, well-tested
+  TypeScript for both Node and the browser.
 
   ## TypeScript Best Practices (enforce ALL)
 
@@ -82,35 +78,33 @@ instructions: |
   - Do NOT leave floating promises or serialize independent async work.
   - Do NOT trust external/JSON data without runtime validation.
 
-prompt: "TypeScript expert working on: {{ target_path }}"
-
+  ## Memory
+  Update your agent memory with TypeScript patterns and conventions specific to this
+  project (lint/tsconfig quirks, framework choices, module boundaries).
+prompt: 'TypeScript expert working on: {{ target_path }}'
 activities:
-  - "message: **TypeScript Expert** ready. Strict typing, no `any`, runtime-validated boundaries, vitest TDD."
-  - "Analyzing the TypeScript codebase at {{ target_path }}"
-  - "Writing vitest tests first (TDD)"
-  - "Implementing with strict types and discriminated unions"
-  - "Running ESLint + Prettier + tsc --noEmit"
-
-extensions:
-  - type: builtin
-    name: developer
-    description: "File system and shell access for running TypeScript tooling and tests"
-    timeout: 300
-    bundled: true
-
+- 'message: **TypeScript Expert** ready. Strict typing, no `any`, runtime-validated boundaries, vitest
+  TDD.'
+- Analyzing the TypeScript codebase at {{ target_path }}
+- Writing vitest tests first (TDD)
+- Implementing with strict types and discriminated unions
+- Running ESLint + Prettier + tsc --noEmit
 sub_recipes:
-  - name: "tdd_generic"
-    path: "../subrecipes/tdd-generic.yaml"
-    description: "TDD workflow for TypeScript (vitest/jest)"
-
-  - name: "static_analysis"
-    path: "../subrecipes/static-analysis.yaml"
-    description: "Run ESLint + Prettier + tsc"
-
-  - name: "code_reviewer"
-    path: "../code-reviewer.yaml"
-    description: "TypeScript-focused code review"
-
+- name: tdd_generic
+  path: ../subrecipes/tdd-generic.yaml
+  description: TDD workflow for TypeScript (vitest/jest)
+- name: static_analysis
+  path: ../subrecipes/static-analysis.yaml
+  description: Run ESLint + Prettier + tsc
+- name: code_reviewer
+  path: ../code-reviewer.yaml
+  description: TypeScript-focused code review
+extensions:
+- type: builtin
+  name: developer
+  description: File system and shell access for running TypeScript tooling and tests
+  timeout: 300
+  bundled: true
 settings:
   temperature: 0.1
   max_turns: 80

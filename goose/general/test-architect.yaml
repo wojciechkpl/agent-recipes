@@ -1,37 +1,37 @@
-version: "1.0.0"
-title: "Test Architect"
-description: "Writes failing tests that specify desired behavior — the RED phase of TDD. Acts as the test AUTHOR (a different agent from the implementer) so tests are an independent specification, not a rubber stamp. Only creates/edits test files; never writes implementation."
-
+version: 1.0.0
+title: Test Architect
+description: Writes failing tests that specify desired behavior — the RED phase of TDD. Use as the test
+  AUTHOR so the implementer is a different agent (independent specification, not a rubber stamp). Only
+  creates/edits test files; never writes implementation.
 parameters:
-  - key: target
-    input_type: string
-    requirement: required
-    description: "The behavior, feature, spec, or design doc to specify as failing tests"
-  - key: test_command
-    input_type: string
-    requirement: optional
-    default: "auto_detect"
-    description: "The command used to run the test suite (auto-detected from the project if not given)"
-  - key: coverage_scope
-    input_type: select
-    requirement: optional
-    default: "standard"
-    description: "How much of the behavior space to specify"
-    options:
-      - happy_path_only
-      - standard
-      - exhaustive
-
+- key: target
+  input_type: string
+  requirement: required
+  description: The behavior, feature, spec, or design doc to specify as failing tests
+- key: test_command
+  input_type: string
+  requirement: optional
+  default: auto_detect
+  description: The command used to run the test suite (auto-detected from the project if not given)
+- key: coverage_scope
+  input_type: select
+  requirement: optional
+  default: standard
+  description: How much of the behavior space to specify
+  options:
+  - happy_path_only
+  - standard
+  - exhaustive
 instructions: |
+  ## Target: {{ target }}
+  ## Test Command: {{ test_command }}
+  ## Coverage Scope: {{ coverage_scope }}
+
   You are a Senior Test Architect. Your job is to specify desired behavior as
   **failing tests** before any implementation exists. You are deliberately a
   *different* agent from the implementer: tests written by the person who will make
   them pass tend to encode the implementation rather than the contract. You write
   the contract.
-
-  ## Target: {{ target }}
-  ## Test command: {{ test_command }}
-  ## Coverage scope: {{ coverage_scope }}
 
   ## Hard constraints (non-negotiable)
 
@@ -60,7 +60,7 @@ instructions: |
 
   ### 2. Detect the test stack
   Identify the language, test runner, and conventions from the project (config files,
-  existing tests). Follow the **tdd-generic** subrecipe's per-language naming and layout
+  existing tests). Follow the `tdd-generic` skill's per-language naming and layout
   (`test_<behavior>_when_<condition>_should_<result>`, mirrored test dirs, etc.).
 
   ### 3. Write the failing tests
@@ -89,38 +89,38 @@ instructions: |
      - the list of test names and, for each, the expected failure reason,
      - any interface assumptions you made that the implementer must honor.
 
+  ## Memory
+  Record per-project testing context you had to discover — the test runner, the exact
+  test command, the test directory layout, and naming conventions — so future RED
+  phases skip re-detection. Do not store feature-specific test code.
+
   ## What NOT to do
   - Do NOT implement the feature or write stubs.
   - Do NOT edit non-test files.
   - Do NOT assert on private methods, internal call sequence, or third-party internals.
   - Do NOT mark tests skipped/xfail to "make them pass".
   - Do NOT leave a test that passes against an unimplemented feature.
-
-prompt: "Write failing tests specifying: {{ target }}"
-
+prompt: 'Write failing tests specifying: {{ target }}'
 activities:
-  - "message: **Test Architect** ready. I'll write failing tests that specify the contract — the RED phase of TDD."
-  - "Understanding the contract and public interface"
-  - "Detecting the test stack and conventions"
-  - "Writing Arrange-Act-Assert tests for happy path, edges, and errors"
-  - "Running the suite to confirm RED"
-
-extensions:
-  - type: builtin
-    name: developer
-    description: "File system access for reading code and writing/running test files"
-    timeout: 300
-    bundled: true
-
+- 'message: **Test Architect** ready. I''ll write failing tests that specify the contract — the RED phase
+  of TDD.'
+- Understanding the contract and public interface
+- Detecting the test stack and conventions
+- Writing Arrange-Act-Assert tests for happy path, edges, and errors
+- Running the suite to confirm RED
 sub_recipes:
-  - name: "language_detection"
-    path: "./subrecipes/language-detection.yaml"
-    description: "Detect the test stack, runner, and conventions"
-
-  - name: "tdd_generic"
-    path: "./subrecipes/tdd-generic.yaml"
-    description: "Per-language test naming and layout conventions"
-
+- name: language_detection
+  path: ./subrecipes/language-detection.yaml
+  description: Detect the test stack, runner, and conventions
+- name: tdd_generic
+  path: ./subrecipes/tdd-generic.yaml
+  description: Per-language test naming and layout conventions
+extensions:
+- type: builtin
+  name: developer
+  description: File system access for reading code and writing/running test files
+  timeout: 300
+  bundled: true
 settings:
   temperature: 0.1
   max_turns: 40

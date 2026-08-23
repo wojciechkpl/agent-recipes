@@ -1,40 +1,40 @@
-version: "1.0.0"
-title: "Git Best Practices"
-description: "Enforces git workflow best practices: conventional commits, branching strategy, PR hygiene, and pre-commit validation."
-
+version: 1.0.0
+title: Git Best Practices
+description: 'Enforces git workflow best practices: conventional commits, branching strategy, PR hygiene,
+  and pre-commit validation.'
 parameters:
-  - key: project_path
-    input_type: string
-    requirement: required
-    description: "Root path of the git repository"
-  - key: workflow
-    input_type: select
-    requirement: optional
-    default: "feature_branch"
-    description: "Git workflow strategy to follow"
-    options:
-      - feature_branch
-      - gitflow
-      - trunk_based
-  - key: action
-    input_type: select
-    requirement: required
-    description: "What git action to perform or validate"
-    options:
-      - validate_commit
-      - prepare_pr
-      - check_branch_hygiene
-      - setup_hooks
-      - concurrent_safety
-
+- key: project_path
+  input_type: string
+  requirement: required
+  description: Root path of the git repository
+- key: workflow
+  input_type: select
+  requirement: optional
+  default: feature_branch
+  description: Git workflow strategy to follow
+  options:
+  - feature_branch
+  - gitflow
+  - trunk_based
+- key: action
+  input_type: select
+  requirement: required
+  description: What git action to perform or validate
+  options:
+  - validate_commit
+  - prepare_pr
+  - check_branch_hygiene
+  - setup_hooks
+  - concurrent_safety
 instructions: |
-  You are a Git workflow agent enforcing best practices for clean, auditable version control.
-
-  ## Target: {{ project_path }}
+  ## Project Path: {{ project_path }}
   ## Workflow: {{ workflow }}
   ## Action: {{ action }}
 
+  You are a Git workflow agent enforcing best practices for clean, auditable version control.
+
   ## Conventional Commits Standard
+
   All commit messages MUST follow:
   ```
   <type>(<scope>): <description>
@@ -56,7 +56,7 @@ instructions: |
 
   ## Actions
 
-  ### validate_commit
+  ### Validate Commit
   1. Check staged changes with `git diff --cached --stat`
   2. Verify the commit message follows Conventional Commits
   3. Ensure no secrets or sensitive files are staged:
@@ -66,110 +66,81 @@ instructions: |
   4. Check file sizes — warn if any file > 1MB
   5. Verify no merge conflict markers (`<<<<<<<`, `=======`, `>>>>>>>`)
 
-  ### prepare_pr
+  ### Prepare PR
   1. Compare current branch against base (usually `main` or `develop`)
   2. Generate PR title from commit history (Conventional Commit style)
-  3. Generate PR body:
-     ```markdown
-     ## Summary
-     [1-3 bullet points from commits]
+  3. Generate PR body with: Summary, Changes, Testing, Checklist
+  4. Check for unresolved TODOs, missing test coverage, files that should update together
+  5. **Reconcile with the base before expecting green.** PR CI lints/tests the *merge*
+     of your branch with the current base, not your branch alone. If the base has
+     advanced (another contributor merged), `git merge origin/<base>` into your branch
+     first and fix any debt that merge surfaces (unsorted imports, unformatted files,
+     new failing tests) — a branch that was green in isolation can still fail PR CI
+     because of code that landed on the base after you branched.
 
-     ## Changes
-     [File-by-file summary of meaningful changes]
+  ### Concurrent Sessions & Worktree Isolation
+  When more than one agent/session may touch the **same clone** (parallel workflows,
+  a teammate, or another AI session), a shared working tree is unsafe: another
+  `git checkout`/`git switch` silently retargets *your* branch, and a branch switch
+  resets working-tree files that have no uncommitted diff — committed work survives on
+  the branch ref, but **uncommitted edits can be scrambled or lost**.
 
-     ## Testing
-     [How to test these changes]
+  1. **Isolate by default.** Give each concurrent line of work its own
+     `git worktree add <path> <branch>` (or the `Agent` tool's `isolation: "worktree"`).
+     A worktree is immune to branch switches in the main clone. Caveats: a fresh
+     worktree has no `.env` and no installed deps — copy/recreate them before running
+     hooks/tests (an env-dependent pre-commit hook, e.g. OpenAPI generation, fails
+     without config).
+  2. **Verify the branch before every git op.** `git branch --show-current` must equal
+     your expected branch immediately before `add`/`commit`/`push`. Abort if it moved.
+  3. **Commit promptly; don't accumulate.** When orchestrating parallel file-mutating
+     agents, commit (or stash) each stream's output as soon as it's verified — never
+     leave several agents' uncommitted changes co-resident in one tree.
+  4. **Recover, don't panic.** If branches collided: your commits are safe on their
+     branch ref. `git worktree add /tmp/recover <your-branch>` for a clean checkout,
+     re-apply any salvageable uncommitted work there (copy intact files / re-run the
+     lost step), then commit/push from the worktree. Never `reset --hard` or
+     blanket-`checkout --` shared files another session may be mid-edit on.
 
-     ## Checklist
-     - [ ] Tests pass locally
-     - [ ] No new warnings from linter
-     - [ ] Documentation updated (if applicable)
-     - [ ] Breaking changes documented (if applicable)
-     ```
-  4. Check for:
-     - Unresolved TODOs in changed files
-     - Missing test coverage for new code
-     - Files that should have been updated together (e.g., migration + model)
-  5. Reconcile with the base before expecting green. PR CI lints/tests the MERGE of
-     your branch with the current base, not your branch alone. If the base advanced
-     (another contributor merged), `git merge origin/<base>` first and fix any debt
-     that merge surfaces (unsorted imports, unformatted files, new failing tests) —
-     a branch green in isolation can still fail PR CI on code that landed after you
-     branched.
+  ### Branch Naming Convention
 
-  ### concurrent_safety
-  When more than one agent/session may touch the SAME clone, a shared working tree is
-  unsafe: another `git checkout`/`switch` silently retargets your branch, and a branch
-  switch resets working-tree files with no uncommitted diff — committed work survives on
-  the branch ref, but uncommitted edits can be scrambled or lost.
-  1. Isolate by default: give each concurrent line of work its own
-     `git worktree add <path> <branch>`. A worktree is immune to branch switches in
-     the main clone. A fresh worktree has no `.env` and no installed deps — recreate
-     them before running env-dependent hooks/tests.
-  2. Verify the branch before every git op: `git branch --show-current` must equal the
-     expected branch immediately before add/commit/push; abort if it moved.
-  3. Commit promptly; never leave several agents' uncommitted changes co-resident in
-     one tree.
-  4. Recover via worktree: commits are safe on their branch ref —
-     `git worktree add /tmp/recover <branch>`, re-apply salvageable uncommitted work,
-     commit/push from there. Never `reset --hard` or blanket-`checkout --` shared
-     files another session may be mid-edit on.
-
-  ### check_branch_hygiene
-  1. List all local branches and their status:
-     - Merged but not deleted
-     - Stale (no commits in 30+ days)
-     - Diverged from base branch
-  2. Check for:
-     - Branches with no remote tracking
-     - Orphaned feature branches
-  3. Suggest cleanup actions
-
-  ### setup_hooks
-  1. Create `.pre-commit-config.yaml` if not present
-  2. Configure hooks based on detected language:
-     - **Python**: ruff, black, mypy, bandit
-     - **JavaScript/TypeScript**: eslint, prettier, tsc
-     - **Dart**: dart analyze, dart format
-     - **Rust**: cargo fmt, cargo clippy
-     - **Go**: gofmt, go vet, golangci-lint
-  3. Add commit-msg hook for Conventional Commits validation
-  4. Add pre-push hook for test execution
-
-  ## Branch Naming Convention
-  Based on {{ workflow }}:
-
-  ### feature_branch
+  **Feature Branch** (default):
   - `feature/<ticket-id>-<description>` — new features
   - `fix/<ticket-id>-<description>` — bug fixes
   - `chore/<description>` — maintenance tasks
   - `docs/<description>` — documentation changes
 
-  ### gitflow
+  **Gitflow**:
   - `feature/<name>` from `develop`
   - `release/<version>` from `develop`
   - `hotfix/<name>` from `main`
 
-  ### trunk_based
+  **Trunk-Based**:
   - Short-lived branches: `<username>/<description>`
   - Max 2 days before merge
   - Feature flags for incomplete work
 
-prompt: "Execute git best practice action: {{ action }}"
-
+  ### Setup Hooks
+  Configure pre-commit hooks based on detected language:
+  - **Python**: ruff, black, mypy, bandit
+  - **JavaScript/TypeScript**: eslint, prettier, tsc
+  - **Dart**: dart analyze, dart format
+  - **Rust**: cargo fmt, cargo clippy
+  - **Go**: gofmt, go vet, golangci-lint
+  - Add commit-msg hook for Conventional Commits validation
+  - Add pre-push hook for test execution
+prompt: 'Execute git best practice action: {{ action }}'
 activities:
-  - "message: **Git Best Practices** agent enforcing clean version control..."
-  - "Analyzing git repository state"
-  - "Validating against {{ workflow }} workflow conventions"
-  - "Generating recommendations"
-
+- 'message: **Git Best Practices** agent enforcing clean version control...'
+- Analyzing git repository state
+- Validating against {{ workflow }} workflow conventions
+- Generating recommendations
 extensions:
-  - type: builtin
-    name: developer
-    description: "Git command execution and file system access"
-    timeout: 120
-    bundled: true
-
+- type: builtin
+  name: developer
+  description: Git command execution and file system access
+  timeout: 120
+  bundled: true
 settings:
   temperature: 0.1
   max_turns: 25

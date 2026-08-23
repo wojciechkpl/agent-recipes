@@ -46,6 +46,7 @@ Then describe a task (`Review the auth module for security issues`) or run a wor
 ├── .claude-plugin/         # marketplace.json — install claude/ as a plugin, no clone needed
 ├── .github/workflows/      # CI — shellcheck, JSON validation, contract tests
 ├── docs/                   # Tutorials and design docs
+├── tools/                  # generate_renderings.py — Kiro/Goose renderings from claude/
 ├── shared/                 # Cross-platform standards
 │   ├── workflows.md            # Canonical workflow catalog (sequences + gates)
 │   ├── severity-scale.md       # Shared 🔴🟠🟡🔵ℹ️ severity classification
@@ -66,7 +67,7 @@ Then describe a task (`Review the auth module for security issues`) or run a wor
 │       ├── languages/*.md      # 6 language experts
 │       └── specialized/*.md    # 2 specialized agents
 │
-├── goose/                  # Goose agent recipes (YAML)
+├── goose/                  # Goose recipes (YAML; general/ agent files are GENERATED from claude/)
 │   ├── README.md               # Goose-specific documentation
 │   ├── TUTORIAL.md             # Step-by-step Goose usage guide
 │   ├── general/
@@ -80,7 +81,7 @@ Then describe a task (`Review the auth module for security issues`) or run a wor
 │       ├── recipes/            # Goose execution configs
 │       └── tools/              # Docker infrastructure scripts
 │
-├── kiro/                   # Kiro agents (JSON)
+├── kiro/                   # Kiro agents (JSON — GENERATED from claude/)
 │   ├── README.md               # Kiro-specific documentation
 │   ├── setup-kiro.sh           # Installation script
 │   └── agents/
@@ -652,16 +653,19 @@ All agents enforce these principles regardless of platform:
 ## Contributing
 
 1. Fork the repository
-2. Add or modify agents in both `goose/` and `claude/` directories
-3. Ensure TDD is enforced in every new agent
-4. Follow naming conventions in `shared/naming-conventions.md`
-5. Update agent catalogs in this README and platform-specific READMEs
-6. Submit a PR with description of the agent's purpose
+2. Edit or add agents in `claude/` ONLY — `claude/agents/**.md` and
+   `claude/skills/*/SKILL.md` are the **single source of truth**
+3. Regenerate the Kiro/Goose renderings (CI fails on drift):
+   `pip install pyyaml && python3 tools/generate_renderings.py --write`
+4. Ensure TDD is enforced in every new agent
+5. Follow naming conventions in `shared/naming-conventions.md`
+6. Update the agent catalogs in this README and `claude/README.md`
+7. Submit a PR with a description of the agent's purpose
 
-When adding a new recipe:
-- Create it in both `goose/general/` (YAML) and `claude/agents/` (Markdown)
-- If it's a shared procedure, add it as a Claude skill (`claude/skills/<name>/SKILL.md`); Goose/Kiro render it under their `subrecipes/`
-- Update the Agent Catalog tables in all three READMEs
+A shared procedure is a Claude **skill** (`claude/skills/<name>/SKILL.md`); the
+generator renders it as a subrecipe agent for Goose and Kiro. Goose-only extras
+(`arxiv-search`, missions, workflows) stay hand-maintained and are never touched
+by the generator.
 
 ---
 

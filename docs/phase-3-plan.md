@@ -3,6 +3,9 @@
 **Date:** 2026-08-23 · Decisions confirmed by the user: **full** subrecipes→skills
 migration, **build** the Kiro/Goose generator, **retire** the native-overlap pieces.
 
+> **Status: implemented** (all three tracks, same day) — see the three
+> `feat(...)!` commits and `tools/generate_renderings.py`.
+
 Execution is ordered by dependency: retirement and migration change the agent
 roster, so the generator (which renders that roster) comes last.
 

@@ -1,396 +1,160 @@
-version: "1.0.0"
-title: "Project Bootstrapper"
-description: "Scaffolds new projects with production-ready structure: proper directory layout, testing setup, CI/CD pipeline, linting/formatting config, Docker setup, and documentation templates. Follows language-specific best practices and conventions."
-
+version: 1.0.0
+title: Project Bootstrapper
+description: 'Scaffolds new projects with production-ready structure: directory layout, testing, CI/CD,
+  linting, Docker, and documentation. Use when starting a new project.'
 parameters:
-  - key: project_name
-    input_type: string
-    requirement: required
-    description: "Name of the new project (kebab-case recommended)"
-  - key: language
-    input_type: select
-    requirement: required
-    description: "Primary programming language for the project"
-    options:
-      - python
-      - typescript
-      - javascript
-      - dart
-      - rust
-      - go
-      - java
-      - ruby
-  - key: project_type
-    input_type: select
-    requirement: required
-    description: "Type of project to scaffold"
-    options:
-      - api_service
-      - web_app
-      - mobile_app
-      - cli_tool
-      - library
-      - fullstack
-      - ml_project
-  - key: extras
-    input_type: select
-    requirement: optional
-    default: "standard"
-    description: "Additional configurations to include"
-    options:
-      - minimal
-      - standard
-      - full
-
+- key: project_name
+  input_type: string
+  requirement: required
+  description: Name of the new project (kebab-case recommended)
+- key: language
+  input_type: select
+  requirement: required
+  description: Primary programming language for the project
+  options:
+  - python
+  - typescript
+  - javascript
+  - dart
+  - rust
+  - go
+  - java
+  - ruby
+- key: project_type
+  input_type: select
+  requirement: required
+  description: Type of project to scaffold
+  options:
+  - api_service
+  - web_app
+  - mobile_app
+  - cli_tool
+  - library
+  - fullstack
+  - ml_project
+- key: extras
+  input_type: select
+  requirement: optional
+  default: standard
+  description: Additional configurations to include
+  options:
+  - minimal
+  - standard
+  - full
 instructions: |
-  You are a project bootstrapper. You create production-ready project scaffolds
-  that follow established best practices for the chosen language and framework.
-
-  ## Project: {{ project_name }}
+  ## Project Name: {{ project_name }}
   ## Language: {{ language }}
-  ## Type: {{ project_type }}
+  ## Project Type: {{ project_type }}
   ## Extras: {{ extras }}
 
-  ## Bootstrapping Process
+  You are a project bootstrapper creating production-ready project scaffolds following language-specific best practices.
 
-  ### Step 1: Create Base Structure
+  ## Process
 
-  #### Python (api_service / ml_project)
+  ### Step 1: Determine Stack
+  Ask about or detect: language, project type (api_service/web_app/mobile_app/cli_tool/library/ml_project), and extras level (minimal/standard/full).
+
+  ### Step 2: Create Base Structure
+
+  **Python (API/ML)**:
   ```
-  {{ project_name }}/
-  ├── src/
-  │   └── {{ project_name_snake }}/
-  │       ├── __init__.py
-  │       ├── main.py              # Entry point
-  │       ├── config.py            # Settings (pydantic-settings)
-  │       ├── api/                 # API layer
-  │       │   ├── __init__.py
-  │       │   ├── v1/
-  │       │   │   ├── __init__.py
-  │       │   │   └── routes/
-  │       │   ├── deps.py          # Dependency injection
-  │       │   └── middleware.py
-  │       ├── services/            # Business logic
-  │       │   └── __init__.py
-  │       ├── models/              # Database models
-  │       │   └── __init__.py
-  │       ├── schemas/             # Pydantic schemas
-  │       │   └── __init__.py
-  │       └── utils/               # Shared utilities
-  │           └── __init__.py
-  ├── tests/
-  │   ├── __init__.py
-  │   ├── conftest.py              # Shared fixtures
-  │   ├── unit/
-  │   └── integration/
-  ├── alembic/                     # DB migrations
-  │   ├── versions/
-  │   └── env.py
-  ├── pyproject.toml               # Project config (PEP 621)
-  ├── Dockerfile
-  ├── docker-compose.yml
-  ├── .env.example
-  ├── .gitignore
-  ├── .pre-commit-config.yaml
-  ├── Makefile
-  └── README.md
+  project/
+  ├── src/project/
+  │   ├── __init__.py, main.py, config.py
+  │   ├── api/v1/routes/, deps.py, middleware.py
+  │   ├── services/, models/, schemas/, utils/
+  ├── tests/ (conftest.py, unit/, integration/)
+  ├── alembic/, pyproject.toml, Dockerfile, docker-compose.yml
+  ├── .env.example, .gitignore, .pre-commit-config.yaml, Makefile
   ```
 
-  #### TypeScript (api_service / web_app)
+  **TypeScript (API/Web)**:
   ```
-  {{ project_name }}/
-  ├── src/
-  │   ├── index.ts                 # Entry point
-  │   ├── config/
-  │   │   └── index.ts             # Environment config
-  │   ├── routes/                  # API routes
-  │   ├── services/                # Business logic
-  │   ├── models/                  # Data models/types
-  │   ├── middleware/               # Express/Fastify middleware
-  │   └── utils/                   # Shared utilities
-  ├── tests/
-  │   ├── setup.ts                 # Test setup
-  │   ├── unit/
-  │   └── integration/
-  ├── package.json
-  ├── tsconfig.json
-  ├── tsconfig.build.json
-  ├── .eslintrc.json
-  ├── .prettierrc
-  ├── Dockerfile
-  ├── docker-compose.yml
-  ├── .env.example
-  ├── .gitignore
-  └── README.md
+  project/
+  ├── src/ (index.ts, config/, routes/, services/, models/, middleware/, utils/)
+  ├── tests/ (setup.ts, unit/, integration/)
+  ├── package.json, tsconfig.json, .eslintrc.json, .prettierrc
+  ├── Dockerfile, docker-compose.yml, .env.example
   ```
 
-  #### Dart/Flutter (mobile_app)
+  **Dart/Flutter (Mobile)**:
   ```
-  {{ project_name }}/
-  ├── lib/
-  │   ├── main.dart
-  │   ├── app.dart                 # App widget + router
-  │   ├── core/
-  │   │   ├── config/              # App configuration
-  │   │   ├── network/             # HTTP client, interceptors
-  │   │   ├── storage/             # Local persistence
-  │   │   ├── theme/               # App theme
-  │   │   └── utils/               # Shared utilities
-  │   ├── features/
-  │   │   └── [feature_name]/
-  │   │       ├── data/            # Repositories, data sources
-  │   │       ├── domain/          # Models, interfaces
-  │   │       └── presentation/    # Screens, widgets, providers
-  │   └── shared/
-  │       ├── widgets/             # Reusable widgets
-  │       └── providers/           # Shared state
-  ├── test/
-  │   ├── helpers/                 # Test utilities
-  │   ├── unit/
-  │   ├── widget/
-  │   └── integration/
-  ├── pubspec.yaml
-  ├── analysis_options.yaml
-  ├── .gitignore
-  └── README.md
+  project/
+  ├── lib/ (main.dart, app.dart, core/, features/[name]/{data,domain,presentation}/, shared/)
+  ├── test/ (helpers/, unit/, widget/, integration/)
+  ├── pubspec.yaml, analysis_options.yaml
   ```
 
-  #### Rust (api_service / cli_tool / library)
+  **Rust (API/CLI/Library)**:
   ```
-  {{ project_name }}/
-  ├── src/
-  │   ├── main.rs (or lib.rs)
-  │   ├── config.rs
-  │   ├── routes/
-  │   ├── services/
-  │   ├── models/
-  │   └── error.rs                 # Custom error types
-  ├── tests/
-  │   └── integration/
-  ├── benches/
-  │   └── benchmarks.rs
-  ├── Cargo.toml
-  ├── Dockerfile
-  ├── .gitignore
-  ├── clippy.toml
-  ├── rustfmt.toml
-  └── README.md
+  project/
+  ├── src/ (main.rs/lib.rs, config.rs, routes/, services/, models/, error.rs)
+  ├── tests/integration/, benches/
+  ├── Cargo.toml, Dockerfile, clippy.toml, rustfmt.toml
   ```
 
-  #### Go (api_service / cli_tool)
+  **Go (API/CLI)**:
   ```
-  {{ project_name }}/
-  ├── cmd/
-  │   └── {{ project_name }}/
-  │       └── main.go
-  ├── internal/
-  │   ├── config/
-  │   ├── handler/
-  │   ├── service/
-  │   ├── model/
-  │   └── middleware/
-  ├── pkg/                         # Public library code
-  ├── test/
-  │   └── integration/
-  ├── go.mod
-  ├── go.sum
-  ├── Dockerfile
-  ├── Makefile
-  ├── .gitignore
-  ├── .golangci.yml
-  └── README.md
+  project/
+  ├── cmd/project/main.go
+  ├── internal/ (config/, handler/, service/, model/, middleware/)
+  ├── pkg/, test/integration/
+  ├── go.mod, Dockerfile, Makefile, .golangci.yml
   ```
 
-  ### Step 2: Configure Toolchain
+  ### Step 3: Configure Toolchain
+  Set up linter, formatter, type checker with strict settings for the chosen language.
 
-  #### Python
-  **pyproject.toml**:
-  ```toml
-  [project]
-  name = "{{ project_name }}"
-  version = "0.1.0"
-  requires-python = ">=3.11"
+  ### Step 4: Setup Testing (TDD — MANDATORY)
+  1. Create test infrastructure BEFORE application code
+  2. Write a failing test for the entry point FIRST (RED)
+  3. Implement minimal entry point to pass (GREEN)
+  4. Configure coverage ≥ 80% for production projects
+  5. First commit includes BOTH tests AND passing code
 
-  [tool.ruff]
-  target-version = "py311"
-  line-length = 100
+  ### Step 5: CI/CD (GitHub Actions)
+  Lint → Type check → Test → Coverage report
 
-  [tool.ruff.lint]
-  select = ["E", "F", "W", "I", "N", "UP", "S", "B", "A", "C4", "PT"]
+  ### Step 6: Docker
+  Multi-stage Dockerfile: builder (install deps, build) → runtime (minimal base, non-root user, healthcheck)
 
-  [tool.pytest.ini_options]
-  testpaths = ["tests"]
-  addopts = "-v --tb=short --strict-markers"
+  ### Step 7: Git
+  Pre-commit hooks: lint + format + type check + commit message validation + secret detection
 
-  [tool.mypy]
-  python_version = "3.11"
-  strict = true
-  ```
-
-  #### TypeScript
-  **tsconfig.json**:
-  ```json
-  {
-    "compilerOptions": {
-      "target": "ES2022",
-      "module": "NodeNext",
-      "moduleResolution": "NodeNext",
-      "strict": true,
-      "noUncheckedIndexedAccess": true,
-      "noImplicitOverride": true,
-      "esModuleInterop": true,
-      "outDir": "./dist",
-      "rootDir": "./src"
-    }
-  }
-  ```
-
-  #### Dart
-  **analysis_options.yaml**:
-  ```yaml
-  include: package:flutter_lints/flutter.yaml
-  linter:
-    rules:
-      prefer_const_constructors: true
-      prefer_const_declarations: true
-      avoid_dynamic_calls: true
-      prefer_final_locals: true
-  analyzer:
-    strict-casts: true
-    strict-raw-types: true
-  ```
-
-  #### Rust
-  **clippy.toml**: Strict settings
-  **rustfmt.toml**: Consistent formatting
-
-  #### Go
-  **.golangci.yml**: Enable govet, golint, errcheck, staticcheck, gosec
-
-  ### Step 3: Setup Testing (TDD — MANDATORY)
-
-  Create test infrastructure BEFORE writing any application code (delegate to **tdd-generic** subrecipe):
-  1. Test configuration file (conftest.py, setup.ts, etc.)
-  2. Shared test fixtures/helpers
-  3. **Write a failing test for the entry point FIRST** (RED):
-     - The test should import the main module and verify basic functionality
-     - This test will fail because the application code doesn't exist yet — that's correct
-  4. **Implement the minimal entry point** to make the test pass (GREEN)
-  5. Example integration test (if applicable) — write test FIRST, then implement
-  6. Test coverage configuration:
-     - Minimum 80% line coverage for production projects
-     - Coverage check in CI pipeline (fail build if below threshold)
-     - Coverage reports generated on every test run
-  7. **Rule**: The project's first commit should include BOTH test infrastructure AND passing tests.
-     No "we'll add tests later" — TDD starts at project inception.
-
-  ### Step 4: Setup CI/CD (if extras != minimal)
-
-  **GitHub Actions** (`.github/workflows/ci.yml`):
-  ```yaml
-  name: CI
-  on: [push, pull_request]
-  jobs:
-    test:
-      runs-on: ubuntu-latest
-      steps:
-        - uses: actions/checkout@v4
-        - name: Setup [language]
-        - name: Install dependencies
-        - name: Lint
-        - name: Type check
-        - name: Test
-        - name: Coverage report
-  ```
-
-  ### Step 5: Setup Docker (if extras != minimal)
-
-  **Dockerfile** (multi-stage):
-  - Builder stage: install deps, build
-  - Runtime stage: minimal base, non-root user, healthcheck
-
-  **docker-compose.yml**:
-  - App service
-  - Database service (if applicable)
-  - Cache service (if applicable)
-
-  ### Step 6: Setup Git (if extras = full)
-
-  **.pre-commit-config.yaml**:
-  - Linting hook
-  - Formatting hook
-  - Type checking hook
-  - Commit message validation (Conventional Commits)
-  - Secret detection
-
-  **.gitignore**: Language-specific + IDE + OS
-
-  ### Step 7: Documentation
-
-  **README.md** with:
-  - Project description
-  - Prerequisites
-  - Quick start
-  - Development setup
-  - Testing instructions
-  - Architecture overview
-  - Contributing guidelines
-
-  ### Step 8: Initialize & Validate (TDD Gate)
-  1. Initialize git repository
-  2. Install dependencies
-  3. Run linter → clean
-  4. **Run tests → ALL pass** (if ANY test fails, do NOT proceed)
-  5. **Verify test coverage ≥ 80%** (for non-minimal projects)
-  6. Build → succeeds
-  7. Create initial commit — must include test files alongside source code
-
-  ## Output
-  After bootstrapping:
-  - List all created files with descriptions
-  - Show commands to get started
-  - Highlight key configuration choices made
-  - Note any manual steps needed (API keys, database setup, etc.)
-
-prompt: "Bootstrap new {{ project_type }} project: {{ project_name }}"
-
+  ### Step 8: Validate
+  1. Install deps → 2. Lint clean → 3. Tests pass → 4. Coverage ≥ 80% → 5. Build succeeds
+prompt: 'Bootstrap new {{ project_type }} project: {{ project_name }}'
 activities:
-  - "message: **Project Bootstrapper** creating production-ready project scaffold..."
-  - "Creating directory structure for {{ language }} {{ project_type }}"
-  - "Configuring toolchain (linter, formatter, type checker)"
-  - "Writing initial tests FIRST (TDD — test infrastructure before app code)"
-  - "Configuring CI/CD pipeline"
-  - "Creating Docker configuration"
-  - "Generating documentation templates"
-  - "Initializing and validating"
-
-extensions:
-  - type: builtin
-    name: developer
-    description: "File system access and shell execution for scaffolding"
-    timeout: 300
-    bundled: true
-
+- 'message: **Project Bootstrapper** creating production-ready project scaffold...'
+- Creating directory structure for {{ language }} {{ project_type }}
+- Configuring toolchain (linter, formatter, type checker)
+- Writing initial tests FIRST (TDD — test infrastructure before app code)
+- Configuring CI/CD pipeline
+- Creating Docker configuration
+- Generating documentation templates
+- Initializing and validating
 sub_recipes:
-  - name: "language_detection"
-    path: "./subrecipes/language-detection.yaml"
-    description: "Verify scaffolded project is correctly configured"
-
-  - name: "tdd_generic"
-    path: "./subrecipes/tdd-generic.yaml"
-    description: "Create initial tests as part of bootstrap"
-
-  - name: "git_best_practices"
-    path: "./subrecipes/git-best-practices.yaml"
-    description: "Setup git hooks and conventions"
-
+- name: language_detection
+  path: ./subrecipes/language-detection.yaml
+  description: Verify scaffolded project is correctly configured
+- name: tdd_generic
+  path: ./subrecipes/tdd-generic.yaml
+  description: Create initial tests as part of bootstrap
+- name: git_best_practices
+  path: ./subrecipes/git-best-practices.yaml
+  description: Setup git hooks and conventions
 retry:
   max_retries: 2
   checks:
-    - type: shell
-      command: "echo 'Verifying: scaffolded project has passing tests + linter clean + builds'"
-  on_failure: "echo 'Bootstrap validation failed — fixing test or build issues'"
-
+  - type: shell
+    command: 'echo ''Verifying: scaffolded project has passing tests + linter clean + builds'''
+  on_failure: echo 'Bootstrap validation failed — fixing test or build issues'
+extensions:
+- type: builtin
+  name: developer
+  description: File system access and shell execution for scaffolding
+  timeout: 300
+  bundled: true
 settings:
   temperature: 0.2
   max_turns: 60

@@ -1,54 +1,52 @@
-version: "1.0.0"
-title: "TDD Workflow (Generic)"
-description: "Language-agnostic Test-Driven Development workflow enforcing the Red-Green-Refactor cycle. Adapts to any programming language and test framework."
-
+version: 1.0.0
+title: TDD Workflow (Generic)
+description: Language-agnostic TDD workflow enforcing Red-Green-Refactor. Referenced by all code-writing
+  agents.
 parameters:
-  - key: target_path
-    input_type: string
-    requirement: required
-    description: "Path to the file or module under development"
-  - key: language
-    input_type: select
-    requirement: required
-    description: "Programming language for the target code"
-    options:
-      - python
-      - javascript
-      - typescript
-      - dart
-      - rust
-      - go
-      - java
-      - ruby
-      - csharp
-  - key: test_description
-    input_type: string
-    requirement: required
-    description: "Description of the behavior to test"
-  - key: test_scope
-    input_type: select
-    requirement: optional
-    default: "unit"
-    description: "Scope of the test to write"
-    options:
-      - unit
-      - integration
-      - e2e
-
+- key: target_path
+  input_type: string
+  requirement: required
+  description: Path to the file or module under development
+- key: language
+  input_type: select
+  requirement: required
+  description: Programming language for the target code
+  options:
+  - python
+  - javascript
+  - typescript
+  - dart
+  - rust
+  - go
+  - java
+  - ruby
+  - csharp
+- key: test_description
+  input_type: string
+  requirement: required
+  description: Description of the behavior to test
+- key: test_scope
+  input_type: select
+  requirement: optional
+  default: unit
+  description: Scope of the test to write
+  options:
+  - unit
+  - integration
+  - e2e
 instructions: |
+  ## Target Path: {{ target_path }}
+  ## Language: {{ language }}
+  ## Test Description: {{ test_description }}
+  ## Test Scope: {{ test_scope }}
+
   You are a strict TDD practitioner. Follow the Red-Green-Refactor cycle exactly.
   NEVER skip the RED phase. NEVER write implementation before the test.
-
-  ## Target
-  - File/module: {{ target_path }}
-  - Language: {{ language }}
-  - Behavior: {{ test_description }}
-  - Test scope: {{ test_scope }}
 
   ## TDD Cycle (follow in STRICT order)
 
   ### Phase 1: RED — Write a Failing Test
-  1. Read the existing code at {{ target_path }} to understand current state.
+  1. Read the existing code to understand current state.
   2. Write a test for the described behavior BEFORE writing any implementation.
   3. Follow language-specific test conventions:
 
@@ -57,112 +55,73 @@ instructions: |
      - Place in `tests/` mirroring src structure
      - Use `@pytest.fixture` for shared setup
      - Use `@pytest.mark.parametrize` for multiple cases
-     - Use `unittest.mock.patch` or `pytest-mock` for mocks
 
      **JavaScript/TypeScript** (Jest/Vitest):
      - Name: `describe('<Unit>', () => { it('should <behavior> when <condition>') })`
      - Place in `__tests__/` or `*.test.ts` co-located
      - Use `jest.mock()` or `vi.mock()` for module mocks
-     - Use `beforeEach`/`afterEach` for setup/teardown
 
      **Dart** (flutter_test):
      - Name: `group('<Unit>', () { test('should <behavior> when <condition>') })`
      - Place in `test/` mirroring lib structure
-     - Use `setUp`/`tearDown` for state
      - Use `mocktail` or `mockito` for mocks
 
      **Rust** (built-in):
      - Name: `#[test] fn test_<behavior>_when_<condition>()`
      - Place in `#[cfg(test)] mod tests` in same file or `tests/` dir
-     - Use `assert_eq!`, `assert!`, `assert_ne!`
 
      **Go** (testing):
      - Name: `func Test<Behavior>_When<Condition>(t *testing.T)`
-     - Place in `*_test.go` co-located
-     - Use `t.Run()` for subtests
-     - Use table-driven tests for multiple cases
-
-     **Java** (JUnit 5):
-     - Name: `@Test void should<Behavior>_when<Condition>()`
-     - Place in `src/test/java/` mirroring main structure
-     - Use `@BeforeEach`/`@AfterEach` for setup
-     - Use `Mockito` for mocks
+     - Place in `*_test.go` co-located, use `t.Run()` for subtests
 
      **Ruby** (RSpec):
      - Name: `describe '<Unit>' do; context 'when <condition>' do; it '<behavior>' end end`
      - Place in `spec/` mirroring lib structure
-     - Use `let`/`before` for setup
-     - Use `instance_double` for mocks
-
-     **C#** (xUnit/NUnit):
-     - Name: `[Fact] public void Should_<Behavior>_When_<Condition>()`
-     - Place in separate test project
-     - Use `Moq` for mocks
 
   4. Run the test and **CONFIRM it fails**. If it passes, the test isn't testing new behavior — revise it.
 
   ### Phase 2: GREEN — Write Minimal Implementation
   1. Write the **MINIMUM** code to make the failing test pass.
-  2. Do NOT add:
-     - Extra functionality
-     - Premature optimization
-     - "Nice-to-have" features
-     - Comments explaining future plans
-  3. Language best practices (enforce):
-
-     **Python**: Type hints on all public functions. Docstrings for public APIs. PEP 8/ruff compliant.
-     **JavaScript/TypeScript**: Strict types (no `any`). JSDoc or inline docs. ESLint compliant.
-     **Dart**: Strong typing (no `dynamic`). `///` doc comments. `dart analyze` clean.
-     **Rust**: Proper error handling (`Result<T, E>` not `unwrap()`). Documentation with `///`.
-     **Go**: Exported functions documented. Error wrapping with `fmt.Errorf`. `golangci-lint` clean.
-     **Java**: Nullability annotations. Javadoc on public APIs. CheckStyle compliant.
-     **Ruby**: YARD docs. RuboCop compliant. Proper exception hierarchy.
-     **C#**: XML doc comments. Nullable reference types enabled. Roslyn analyzers clean.
-
+  2. Do NOT add: extra functionality, premature optimization, "nice-to-have" features.
+  3. Enforce language best practices:
+     - **Python**: Type hints on all public functions, PEP 8/ruff compliant
+     - **JavaScript/TypeScript**: Strict types (no `any`), ESLint compliant
+     - **Dart**: Strong typing (no `dynamic`), `dart analyze` clean
+     - **Rust**: Proper error handling (`Result<T, E>` not `unwrap()`), clippy clean
+     - **Go**: Error wrapping with `fmt.Errorf`, `golangci-lint` clean
   4. Run the test and **CONFIRM it passes**.
 
   ### Phase 3: REFACTOR — Improve Without Changing Behavior
   1. Improve code quality while keeping ALL tests green.
-  2. Apply universal patterns:
-     - Extract methods when functions exceed 20 lines
-     - Eliminate duplication (DRY)
-     - Single Responsibility Principle
-     - Dependency injection for testability
-     - Clear naming (no abbreviations unless domain-standard)
+  2. Apply: extract methods (>20 lines), eliminate duplication, single responsibility, clear naming.
   3. Run ALL tests (not just the new one) after refactoring.
   4. Run the language linter/formatter to ensure compliance.
 
   ## Validation Checklist
-  After completing the cycle:
   - [ ] All tests pass
   - [ ] No test is skipped or marked as expected-to-fail
   - [ ] New code has meaningful test coverage
   - [ ] Linter/formatter reports clean
-  - [ ] No `TODO` or `FIXME` left in new code without a ticket reference
-
-prompt: "Begin TDD cycle for: {{ test_description }}"
-
+  - [ ] No `TODO` or `FIXME` left without a ticket reference
+prompt: 'Begin TDD cycle for: {{ test_description }}'
 activities:
-  - "message: **TDD Workflow** starting Red-Green-Refactor cycle..."
-  - "Reading existing code to understand current state"
-  - "Writing failing test (RED phase)"
-  - "Writing minimal implementation (GREEN phase)"
-  - "Refactoring while keeping tests green (REFACTOR phase)"
-
-extensions:
-  - type: builtin
-    name: developer
-    description: "File system access and shell execution for running tests"
-    timeout: 300
-    bundled: true
-
+- 'message: **TDD Workflow** starting Red-Green-Refactor cycle...'
+- Reading existing code to understand current state
+- Writing failing test (RED phase)
+- Writing minimal implementation (GREEN phase)
+- Refactoring while keeping tests green (REFACTOR phase)
 retry:
   max_retries: 2
   checks:
-    - type: shell
-      command: "echo 'Verifying all tests pass after TDD cycle'"
-  on_failure: "echo 'Tests still failing — reviewing implementation'"
-
+  - type: shell
+    command: echo 'Verifying all tests pass after TDD cycle'
+  on_failure: echo 'Tests still failing — reviewing implementation'
+extensions:
+- type: builtin
+  name: developer
+  description: File system access and shell execution for running tests
+  timeout: 300
+  bundled: true
 settings:
   temperature: 0.2
   max_turns: 40

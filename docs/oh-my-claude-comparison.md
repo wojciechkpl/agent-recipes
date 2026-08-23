@@ -122,7 +122,13 @@ If after trial you love an omc mode, the play is still *adopt the pattern into a
 
 ## 6. Decision & roadmap
 
-> **Status (2026-08-23): Phases 1 and 2 implemented.** Phase 2: a uniform
+> **Status (2026-08-23): Phases 1, 2, and 3 implemented.** Phase 3 (see
+> `docs/phase-3-plan.md`): analyst + /wf-fanout retired for native features,
+> all 7 subrecipes migrated to Claude skills, and Kiro/Goose renderings are
+> now GENERATED from the Claude canonicals (`tools/generate_renderings.py`,
+> CI-enforced).
+>
+> **Phases 1–2.** Phase 2: a uniform
 > **"Run state & bounded retries"** protocol appended to all 16 `wf-*.md`
 > commands — `.wf/state.json` checkpointing after every gate, resume-on-start
 > (also offered by the `/wf` router), re-read after context compaction, and a

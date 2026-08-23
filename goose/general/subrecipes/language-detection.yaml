@@ -1,17 +1,16 @@
-version: "1.0.0"
-title: "Language & Framework Detection"
-description: "Auto-detects the project's programming language(s), framework(s), package manager, test runner, and linter. Provides structured context for other recipes to adapt their behavior."
-
+version: 1.0.0
+title: Language & Framework Detection
+description: Auto-detects the project's programming language(s), framework(s), package manager, test runner,
+  and toolchain. Referenced by most agents for context adaptation.
 parameters:
-  - key: project_path
-    input_type: string
-    requirement: required
-    description: "Root path of the project to analyze"
-
+- key: project_path
+  input_type: string
+  requirement: required
+  description: Root path of the project to analyze
 instructions: |
-  You are a project analysis agent. Your job is to inspect a project directory and produce a structured report of its technology stack.
+  ## Project Path: {{ project_path }}
 
-  ## Target: {{ project_path }}
+  You are a project analysis agent. Inspect the project directory and produce a structured report of its technology stack.
 
   ## Detection Steps
 
@@ -28,20 +27,18 @@ instructions: |
      - `*.csproj`, `*.sln` → C#/.NET
      - `Gemfile` → Ruby
      - `mix.exs` → Elixir
-     - `Package.swift` → Swift
   2. **Source file extensions** (secondary): count by extension to identify primary/secondary languages
   3. **Dockerfile / docker-compose** (tertiary): look for base images
 
   ### Step 2: Identify Frameworks
   Based on detected language, check for:
-  - **Python**: FastAPI, Django, Flask, Starlette, SQLAlchemy, Pydantic, PyTorch, TensorFlow, pandas
-  - **JavaScript/TypeScript**: React, Next.js, Vue, Angular, Express, NestJS, Svelte
+  - **Python**: FastAPI, Django, Flask, SQLAlchemy, Pydantic, PyTorch, TensorFlow, pandas
+  - **JavaScript/TypeScript**: React, Next.js, Vue, Angular, Express, NestJS
   - **Dart**: Flutter (check `pubspec.yaml` for flutter SDK)
   - **Rust**: Actix, Axum, Rocket, Tokio
   - **Go**: Gin, Echo, Fiber, Chi
   - **Java/Kotlin**: Spring Boot, Ktor, Android
   - **Ruby**: Rails, Sinatra
-  - **C#**: ASP.NET, Entity Framework, Blazor
 
   ### Step 3: Identify Tooling
   Detect:
@@ -50,50 +47,45 @@ instructions: |
   - **Linter/Formatter**: ruff/flake8/black, eslint/prettier, dart analyze, clippy/rustfmt, golangci-lint
   - **Type checker**: mypy/pyright, tsc, dart analyzer
   - **Build tool**: make, just, nx, turbo, gradle
-  - **CI/CD**: GitHub Actions, GitLab CI, Jenkins, CircleCI (check `.github/`, `.gitlab-ci.yml`, `Jenkinsfile`)
+  - **CI/CD**: GitHub Actions, GitLab CI, Jenkins (check `.github/`, `.gitlab-ci.yml`)
   - **Containerization**: Docker, docker-compose, Kubernetes manifests
 
   ### Step 4: Identify Architecture Patterns
   Look for:
-  - **Monorepo vs single project**: Multiple `package.json`/`pyproject.toml` files, workspace configs
+  - **Monorepo**: Multiple `package.json`/`pyproject.toml`, workspace configs
   - **Clean Architecture**: `domain/`, `data/`, `presentation/` directories
   - **MVC**: `models/`, `views/`, `controllers/`
   - **Microservices**: Multiple `Dockerfile`s, docker-compose with multiple services
   - **Feature-based**: `features/`, `modules/` directories
 
   ## Output Format
-  Produce a structured report:
   ```
-  # Project Stack Report: {{ project_path }}
+  # Project Stack Report
   ## Languages: [primary, secondary...]
   ## Frameworks: [list with versions if detectable]
   ## Package Manager: [name]
-  ## Test Runner: [name + command to run tests]
-  ## Linter: [name + command to lint]
-  ## Formatter: [name + command to format]
+  ## Test Runner: [name + command]
+  ## Linter: [name + command]
+  ## Formatter: [name + command]
   ## Type Checker: [name + command if available]
   ## Build Tool: [name + commands]
   ## CI/CD: [platform if detected]
   ## Architecture: [pattern detected]
   ## Directory Structure: [key directories and their roles]
   ```
-
-prompt: "Detect the technology stack for project at: {{ project_path }}"
-
+prompt: 'Detect the technology stack for project at: {{ project_path }}'
 activities:
-  - "message: **Language Detection** scanning project structure..."
-  - "Scanning config files for language indicators"
-  - "Identifying frameworks and dependencies"
-  - "Detecting toolchain (test runner, linter, formatter)"
-  - "Analyzing architecture patterns"
-
+- 'message: **Language Detection** scanning project structure...'
+- Scanning config files for language indicators
+- Identifying frameworks and dependencies
+- Detecting toolchain (test runner, linter, formatter)
+- Analyzing architecture patterns
 extensions:
-  - type: builtin
-    name: developer
-    description: "File system access to read project files and config"
-    timeout: 120
-    bundled: true
-
+- type: builtin
+  name: developer
+  description: File system access to read project files and config
+  timeout: 120
+  bundled: true
 settings:
   temperature: 0.1
   max_turns: 20

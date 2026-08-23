@@ -1,84 +1,75 @@
-version: "1.0.0"
-title: "Docker ML Environment"
-description: >
-  Sets up a fully containerized ML development environment. Generates Dockerfiles (base, training,
-  serving, notebook), docker-compose.yaml with GPU support, MLflow tracking server, artifact storage,
-  and development workflows. Ensures reproducibility, GPU isolation, and infrastructure-as-code for
-  all ML workloads. Follows NVIDIA Container Toolkit best practices and multi-stage build patterns.
-
+version: 1.0.0
+title: Docker ML Environment
+description: Sets up containerized ML development environments with GPU support, MLflow tracking, multi-stage
+  builds. Use for ML project infrastructure.
 parameters:
-  - key: project_path
-    input_type: string
-    requirement: required
-    description: "Path to the ML project root directory"
-  - key: setup_scope
-    input_type: select
-    requirement: required
-    description: "What Docker infrastructure to set up"
-    options:
-      - full_stack
-      - training_only
-      - serving_only
-      - notebook_only
-      - mlflow_server
-      - ci_cd_pipeline
-  - key: gpu_framework
-    input_type: select
-    requirement: optional
-    default: "pytorch"
-    description: "ML framework (determines base CUDA image)"
-    options:
-      - pytorch
-      - pytorch_lightning
-      - tensorflow
-      - jax
-      - custom
-  - key: cuda_version
-    input_type: select
-    requirement: optional
-    default: "12.1"
-    description: "CUDA version for GPU support"
-    options:
-      - "11.8"
-      - "12.1"
-      - "12.4"
-      - "cpu_only"
-  - key: python_version
-    input_type: select
-    requirement: optional
-    default: "3.11"
-    description: "Python version for the base image"
-    options:
-      - "3.10"
-      - "3.11"
-      - "3.12"
-  - key: artifact_backend
-    input_type: select
-    requirement: optional
-    default: "minio"
-    description: "Artifact storage backend for MLflow"
-    options:
-      - local
-      - minio
-      - s3
-      - gcs
-      - azure_blob
-
+- key: project_path
+  input_type: string
+  requirement: required
+  description: Path to the ML project root directory
+- key: setup_scope
+  input_type: select
+  requirement: required
+  description: What Docker infrastructure to set up
+  options:
+  - full_stack
+  - training_only
+  - serving_only
+  - notebook_only
+  - mlflow_server
+  - ci_cd_pipeline
+- key: gpu_framework
+  input_type: select
+  requirement: optional
+  default: pytorch
+  description: ML framework (determines base CUDA image)
+  options:
+  - pytorch
+  - pytorch_lightning
+  - tensorflow
+  - jax
+  - custom
+- key: cuda_version
+  input_type: select
+  requirement: optional
+  default: '12.1'
+  description: CUDA version for GPU support
+  options:
+  - '11.8'
+  - '12.1'
+  - '12.4'
+  - cpu_only
+- key: python_version
+  input_type: select
+  requirement: optional
+  default: '3.11'
+  description: Python version for the base image
+  options:
+  - '3.10'
+  - '3.11'
+  - '3.12'
+- key: artifact_backend
+  input_type: select
+  requirement: optional
+  default: minio
+  description: Artifact storage backend for MLflow
+  options:
+  - local
+  - minio
+  - s3
+  - gcs
+  - azure_blob
 instructions: |
-  You are a Docker ML infrastructure agent. You create reproducible, GPU-enabled containerized
-  environments for machine learning development, training, and serving. Every ML component
-  MUST run inside a container — no exceptions.
-
-  ## Project: {{ project_path }}
-  ## Scope: {{ setup_scope }}
-  ## Framework: {{ gpu_framework }}
-  ## CUDA: {{ cuda_version }}
-  ## Python: {{ python_version }}
+  ## Project Path: {{ project_path }}
+  ## Setup Scope: {{ setup_scope }}
+  ## Gpu Framework: {{ gpu_framework }}
+  ## Cuda Version: {{ cuda_version }}
+  ## Python Version: {{ python_version }}
   ## Artifact Backend: {{ artifact_backend }}
 
-  ---
+  You are a Docker ML infrastructure agent. You create reproducible, GPU-enabled containerized environments for machine learning development, training, and serving. Every ML component MUST run inside a container — no exceptions.
 
-  ## CORE PRINCIPLES
+  ## Core Principles
 
   ### 1. Everything in Containers
   **NEVER** run ML code directly on the host. All these MUST be containerized:
@@ -96,7 +87,7 @@ instructions: |
   - Use deterministic base images with SHA256 digests for production
   - Lock CUDA version in the Dockerfile (not inherited from host)
   - Capture `pip freeze` output as a build artifact
-  - Use `.dockerignore` to exclude data, checkpoints, notebooks outputs
+  - Use `.dockerignore` to exclude data, checkpoints, notebook outputs
 
   ### 3. Multi-Stage Build Pattern
   ```
@@ -112,328 +103,86 @@ instructions: |
   - Set `deploy.resources.reservations.devices` in docker-compose
   - Always set `NVIDIA_VISIBLE_DEVICES` and `NVIDIA_DRIVER_CAPABILITIES`
   - Test GPU access: `docker compose run train nvidia-smi`
-  - For multi-GPU: use `device_ids` to pin specific GPUs per service
 
-  ---
-
-  ## SCOPE: full_stack
-
-  Create the complete Docker ML infrastructure:
-
-  ### Directory Structure
+  ## Directory Structure
   ```
-  {{ project_path }}/
+  project/
   ├── docker/
   │   ├── Dockerfile.base           # Base image: CUDA + Python + system deps
   │   ├── Dockerfile.train          # Training: base + training deps + code
   │   ├── Dockerfile.serve          # Serving: slim base + model + inference
   │   ├── Dockerfile.notebook       # Jupyter: base + notebook deps
   │   └── Dockerfile.mlflow         # MLflow server (lightweight)
-  ├── docker-compose.yaml           # Full stack: train + serve + mlflow + db + storage
+  ├── docker-compose.yaml           # Full stack
   ├── docker-compose.dev.yaml       # Dev overrides: mount code, enable debug
   ├── docker-compose.gpu.yaml       # GPU overrides: NVIDIA runtime
-  ├── .dockerignore                 # Exclude data, checkpoints, .git, __pycache__
-  ├── .env.docker                   # Docker-specific env vars (not secrets!)
+  ├── .dockerignore
+  ├── .env.docker                   # Docker env vars template
   ├── scripts/
-  │   ├── docker-train.sh           # Convenience: docker compose run train
-  │   ├── docker-serve.sh           # Convenience: docker compose up serve
-  │   ├── docker-notebook.sh        # Convenience: docker compose up notebook
-  │   └── docker-test.sh            # Convenience: docker compose run test
-  └── Makefile                      # Make targets wrapping docker commands
+  │   ├── docker-train.sh
+  │   ├── docker-serve.sh
+  │   ├── docker-notebook.sh
+  │   └── docker-test.sh
+  └── Makefile
   ```
 
-  ### Step 1: Base Dockerfile (Dockerfile.base)
+  ## Base Dockerfile Template
   ```dockerfile
-  # === Stage 1: Base Image ===
-  # Pin the exact CUDA + Python version for reproducibility
-  ARG CUDA_VERSION={{ cuda_version }}
-  ARG PYTHON_VERSION={{ python_version }}
+  ARG CUDA_VERSION=12.1
+  ARG PYTHON_VERSION=3.11
 
   FROM nvidia/cuda:${CUDA_VERSION}.0-cudnn8-devel-ubuntu22.04 AS base
 
-  # Prevent interactive prompts during build
   ENV DEBIAN_FRONTEND=noninteractive
   ENV PYTHONUNBUFFERED=1
-  ENV PYTHONDONTWRITEBYTECODE=1
   ENV PIP_NO_CACHE_DIR=1
-  ENV PIP_DISABLE_PIP_VERSION_CHECK=1
 
-  # System dependencies (minimal, security-patched)
   RUN apt-get update && apt-get install -y --no-install-recommends \
-      python${PYTHON_VERSION} \
-      python${PYTHON_VERSION}-dev \
-      python${PYTHON_VERSION}-venv \
-      python3-pip \
-      git \
-      curl \
-      build-essential \
+      python${PYTHON_VERSION} python${PYTHON_VERSION}-dev python3-pip \
+      git curl build-essential \
       && rm -rf /var/lib/apt/lists/*
 
-  # Set Python alias
-  RUN update-alternatives --install /usr/bin/python python /usr/bin/python${PYTHON_VERSION} 1 \
-      && update-alternatives --install /usr/bin/python3 python3 /usr/bin/python${PYTHON_VERSION} 1
-
-  # Create non-root user for security
+  # Non-root user
   RUN groupadd -r mluser && useradd -r -g mluser -m -s /bin/bash mluser
-
   WORKDIR /app
 
-  # === Stage 2: Dependencies ===
   FROM base AS deps
-
-  # Copy dependency files first (Docker layer caching)
-  COPY requirements/base.txt requirements/base.txt
-  COPY requirements/train.txt requirements/train.txt
-  COPY pyproject.toml pyproject.toml
-
-  # Install dependencies (this layer is cached unless requirements change)
-  RUN pip install --no-cache-dir -r requirements/base.txt \
-      && pip install --no-cache-dir -r requirements/train.txt
-
-  # Capture exact versions for reproducibility
+  COPY requirements/base.txt requirements/train.txt pyproject.toml ./
+  RUN pip install --no-cache-dir -r requirements/base.txt -r requirements/train.txt
   RUN pip freeze > /app/requirements.lock
   ```
 
-  ### Step 2: Training Dockerfile (Dockerfile.train)
+  ## Serving Dockerfile (Slim)
   ```dockerfile
-  FROM {{ project_path }}-base:latest AS train
-
-  # Copy training dependencies
-  COPY requirements/train.txt /tmp/requirements-train.txt
-  RUN pip install --no-cache-dir -r /tmp/requirements-train.txt
-
-  # Copy source code (last layer — changes most frequently)
-  COPY src/ /app/src/
-  COPY configs/ /app/configs/
-  COPY scripts/ /app/scripts/
-
-  # Set up MLflow environment
-  ENV MLFLOW_TRACKING_URI=http://mlflow:5000
-  ENV MLFLOW_ARTIFACT_ROOT=s3://ml-artifacts/
-
-  # Switch to non-root user
-  USER mluser
-
-  # Health check
-  HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
-      CMD python -c "import torch; assert torch.cuda.is_available()" || exit 1
-
-  ENTRYPOINT ["python"]
-  CMD ["-m", "src.train"]
-  ```
-
-  ### Step 3: Serving Dockerfile (Dockerfile.serve)
-  ```dockerfile
-  # Slim serving image — no training deps, no dev tools
-  FROM python:{{ python_version }}-slim AS serve
-
+  FROM python:3.11-slim AS serve
   ENV PYTHONUNBUFFERED=1
-
   WORKDIR /app
-
-  # Install ONLY inference dependencies (much smaller image)
-  COPY requirements/serve.txt /tmp/requirements-serve.txt
-  RUN pip install --no-cache-dir -r /tmp/requirements-serve.txt
-
-  # Copy inference code and model loading utilities
+  COPY requirements/serve.txt /tmp/
+  RUN pip install --no-cache-dir -r /tmp/serve.txt
   COPY src/inference/ /app/src/inference/
   COPY src/models/ /app/src/models/
-
-  # Model weights are mounted or downloaded at runtime (not baked in)
   VOLUME /app/models
-
-  # Non-root user
   RUN groupadd -r mluser && useradd -r -g mluser mluser
   USER mluser
-
   EXPOSE 8080
-
   HEALTHCHECK --interval=15s --timeout=5s --retries=3 \
       CMD curl -f http://localhost:8080/health || exit 1
-
   ENTRYPOINT ["python", "-m", "src.inference.serve"]
   ```
 
-  ### Step 4: Docker Compose (docker-compose.yaml)
+  ## Docker Compose Services
+  Include these services in `docker-compose.yaml`:
+  - **train**: Training service with data/checkpoint volume mounts, MLflow env vars
+  - **serve**: Slim serving image with model mount, resource limits, health check
+  - **notebook**: JupyterLab with source code and data mounts
+  - **mlflow**: Tracking server connected to PostgreSQL + MinIO
+  - **postgres**: MLflow metadata store (postgres:16-alpine)
+  - **minio**: S3-compatible artifact storage
+  - **minio-init**: Bucket initialization (ml-artifacts, ml-datasets, ml-models)
+  - **test**: Test runner using training image's test stage
+
+  ## GPU Override (docker-compose.gpu.yaml)
   ```yaml
-  version: "3.8"
-
-  services:
-    # === ML Training Service ===
-    train:
-      build:
-        context: .
-        dockerfile: docker/Dockerfile.train
-      volumes:
-        - ./data:/app/data:ro                    # Read-only data mount
-        - ./checkpoints:/app/checkpoints         # Writable checkpoints
-        - ./configs:/app/configs:ro              # Read-only configs
-      environment:
-        - MLFLOW_TRACKING_URI=http://mlflow:5000
-        - MLFLOW_S3_ENDPOINT_URL=http://minio:9000
-        - AWS_ACCESS_KEY_ID=${MINIO_ACCESS_KEY:?Set MINIO_ACCESS_KEY in .env}
-        - AWS_SECRET_ACCESS_KEY=${MINIO_SECRET_KEY:?Set MINIO_SECRET_KEY in .env}
-        - CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-all}
-      depends_on:
-        mlflow:
-          condition: service_healthy
-      networks:
-        - ml-network
-      # GPU config in docker-compose.gpu.yaml overlay
-
-    # === Model Serving Service ===
-    serve:
-      build:
-        context: .
-        dockerfile: docker/Dockerfile.serve
-      ports:
-        - "${SERVE_PORT:-8080}:8080"
-      volumes:
-        - ./models:/app/models:ro                # Read-only model weights
-      environment:
-        - MODEL_PATH=/app/models/production
-        - MLFLOW_TRACKING_URI=http://mlflow:5000
-      depends_on:
-        mlflow:
-          condition: service_healthy
-      networks:
-        - ml-network
-      deploy:
-        resources:
-          limits:
-            memory: 4G
-        restart_policy:
-          condition: on-failure
-          max_attempts: 3
-
-    # === Jupyter Notebook ===
-    notebook:
-      build:
-        context: .
-        dockerfile: docker/Dockerfile.notebook
-      ports:
-        - "${NOTEBOOK_PORT:-8888}:8888"
-      volumes:
-        - ./notebooks:/app/notebooks             # Persist notebooks
-        - ./data:/app/data:ro
-        - ./src:/app/src:ro                      # Read source code
-      environment:
-        - MLFLOW_TRACKING_URI=http://mlflow:5000
-        - JUPYTER_TOKEN=${JUPYTER_TOKEN:-dev}
-      depends_on:
-        mlflow:
-          condition: service_healthy
-      networks:
-        - ml-network
-
-    # === MLflow Tracking Server ===
-    mlflow:
-      build:
-        context: .
-        dockerfile: docker/Dockerfile.mlflow
-      ports:
-        - "${MLFLOW_PORT:-5000}:5000"
-      environment:
-        - BACKEND_STORE_URI=postgresql://${POSTGRES_USER:-mlflow}:${POSTGRES_PASSWORD:-mlflow}@postgres:5432/${POSTGRES_DB:-mlflow}
-        - ARTIFACT_ROOT=s3://ml-artifacts/
-        - MLFLOW_S3_ENDPOINT_URL=http://minio:9000
-        - AWS_ACCESS_KEY_ID=${MINIO_ACCESS_KEY:?Set MINIO_ACCESS_KEY in .env}
-        - AWS_SECRET_ACCESS_KEY=${MINIO_SECRET_KEY:?Set MINIO_SECRET_KEY in .env}
-      depends_on:
-        postgres:
-          condition: service_healthy
-        minio:
-          condition: service_healthy
-      healthcheck:
-        test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
-        interval: 15s
-        timeout: 5s
-        retries: 3
-        start_period: 30s
-      networks:
-        - ml-network
-
-    # === PostgreSQL (MLflow metadata store) ===
-    postgres:
-      image: postgres:16-alpine
-      environment:
-        - POSTGRES_USER=${POSTGRES_USER:-mlflow}
-        - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-mlflow}
-        - POSTGRES_DB=${POSTGRES_DB:-mlflow}
-      volumes:
-        - postgres-data:/var/lib/postgresql/data
-      healthcheck:
-        test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mlflow}"]
-        interval: 10s
-        timeout: 5s
-        retries: 5
-      networks:
-        - ml-network
-
-    # === MinIO (S3-compatible artifact storage) ===
-    minio:
-      image: minio/minio:latest
-      command: server /data --console-address ":9001"
-      ports:
-        - "${MINIO_PORT:-9000}:9000"
-        - "${MINIO_CONSOLE_PORT:-9001}:9001"
-      environment:
-        - MINIO_ROOT_USER=${MINIO_ACCESS_KEY:?Set MINIO_ACCESS_KEY in .env}
-        - MINIO_ROOT_PASSWORD=${MINIO_SECRET_KEY:?Set MINIO_SECRET_KEY in .env}
-      volumes:
-        - minio-data:/data
-      healthcheck:
-        test: ["CMD", "mc", "ready", "local"]
-        interval: 10s
-        timeout: 5s
-        retries: 5
-      networks:
-        - ml-network
-
-    # === MinIO Bucket Initialization ===
-    minio-init:
-      image: minio/mc:latest
-      depends_on:
-        minio:
-          condition: service_healthy
-      entrypoint: >
-        /bin/sh -c "
-        mc alias set myminio http://minio:9000 ${MINIO_ACCESS_KEY} ${MINIO_SECRET_KEY};
-        mc mb --ignore-existing myminio/ml-artifacts;
-        mc mb --ignore-existing myminio/ml-datasets;
-        mc mb --ignore-existing myminio/ml-models;
-        echo 'Buckets initialized';
-        "
-      networks:
-        - ml-network
-
-    # === Test Runner ===
-    test:
-      build:
-        context: .
-        dockerfile: docker/Dockerfile.train
-        target: test
-      volumes:
-        - ./src:/app/src:ro
-        - ./tests:/app/tests:ro
-      command: ["python", "-m", "pytest", "tests/", "-v", "--tb=short", "-q"]
-      networks:
-        - ml-network
-
-  volumes:
-    postgres-data:
-    minio-data:
-
-  networks:
-    ml-network:
-      driver: bridge
-  ```
-
-  ### Step 5: GPU Override (docker-compose.gpu.yaml)
-  ```yaml
-  # Usage: docker compose -f docker-compose.yaml -f docker-compose.gpu.yaml up train
-  version: "3.8"
-
   services:
     train:
       deploy:
@@ -441,346 +190,43 @@ instructions: |
           reservations:
             devices:
               - driver: nvidia
-                count: all     # or specific: device_ids: ['0', '1']
-                capabilities: [gpu]
-      environment:
-        - NVIDIA_VISIBLE_DEVICES=${NVIDIA_VISIBLE_DEVICES:-all}
-        - NVIDIA_DRIVER_CAPABILITIES=compute,utility
-      runtime: nvidia
-
-    serve:
-      deploy:
-        resources:
-          reservations:
-            devices:
-              - driver: nvidia
-                count: 1
-                capabilities: [gpu]
-      runtime: nvidia
-
-    notebook:
-      deploy:
-        resources:
-          reservations:
-            devices:
-              - driver: nvidia
-                count: 1
+                count: all
                 capabilities: [gpu]
       runtime: nvidia
   ```
 
-  ### Step 6: Dev Override (docker-compose.dev.yaml)
-  ```yaml
-  # Usage: docker compose -f docker-compose.yaml -f docker-compose.dev.yaml up
-  version: "3.8"
+  ## Makefile Targets
+  Provide: `build`, `train`, `gpu-train`, `serve`, `notebook`, `test`, `mlflow`, `up`, `down`, `clean`, `dev`, `gpu-dev`, `sweep`, `gpu-check`, `lint`
 
-  services:
-    train:
-      volumes:
-        - ./src:/app/src                         # Live code reload
-        - ./configs:/app/configs
-      environment:
-        - PYTHONDONTWRITEBYTECODE=0
-        - LOG_LEVEL=DEBUG
-      command: ["python", "-m", "debugpy", "--listen", "0.0.0.0:5678", "-m", "src.train"]
-      ports:
-        - "5678:5678"                            # Debugger port
-
-    notebook:
-      volumes:
-        - ./src:/app/src                         # Editable source
-      environment:
-        - JUPYTER_ENABLE_LAB=yes
-  ```
-
-  ### Step 7: .dockerignore
-  ```
-  # Version control
-  .git
-  .gitignore
-
-  # Python artifacts
-  __pycache__
-  *.pyc
-  *.pyo
-  .mypy_cache
-  .pytest_cache
-  *.egg-info
-
-  # Data (mount at runtime, don't bake in)
-  data/
-  checkpoints/
-  models/
-  *.pt
-  *.pth
-  *.onnx
-  *.bin
-  *.h5
-  *.ckpt
-
-  # Notebooks (mount at runtime)
-  notebooks/*.ipynb
-  .ipynb_checkpoints
-
-  # Environment
-  .env
-  .env.*
-  venv/
-  .venv/
-
-  # IDE
-  .vscode/
-  .idea/
-  *.swp
-
-  # Docker (prevent recursive context)
-  docker-compose*.yaml
-  Dockerfile*
-
-  # Docs
-  docs/
-  *.md
-  LICENSE
-  ```
-
-  ### Step 8: Makefile Targets
-  ```makefile
-  .PHONY: build train serve notebook test mlflow clean gpu-train
-
-  # Build all images
-  build:
-  	docker compose build
-
-  # Training (CPU)
-  train:
-  	docker compose run --rm train
-
-  # Training (GPU)
-  gpu-train:
-  	docker compose -f docker-compose.yaml -f docker-compose.gpu.yaml run --rm train
-
-  # Model serving
-  serve:
-  	docker compose up -d serve
-
-  # Jupyter notebook (GPU)
-  notebook:
-  	docker compose -f docker-compose.yaml -f docker-compose.gpu.yaml up notebook
-
-  # Run tests inside container
-  test:
-  	docker compose run --rm test
-
-  # MLflow UI
-  mlflow:
-  	docker compose up -d mlflow postgres minio minio-init
-  	@echo "MLflow UI: http://localhost:5000"
-  	@echo "MinIO Console: http://localhost:9001"
-
-  # Full stack
-  up:
-  	docker compose up -d
-
-  # Stop all services
-  down:
-  	docker compose down
-
-  # Full cleanup (including volumes)
-  clean:
-  	docker compose down -v --rmi local
-
-  # Development mode (live reload)
-  dev:
-  	docker compose -f docker-compose.yaml -f docker-compose.dev.yaml up
-
-  # GPU development mode
-  gpu-dev:
-  	docker compose -f docker-compose.yaml -f docker-compose.gpu.yaml -f docker-compose.dev.yaml up
-
-  # HPO sweep (GPU)
-  sweep:
-  	docker compose -f docker-compose.yaml -f docker-compose.gpu.yaml run --rm \
-  		train python -m scripts.run_hpo
-
-  # Show GPU status
-  gpu-check:
-  	docker compose -f docker-compose.yaml -f docker-compose.gpu.yaml run --rm \
-  		train nvidia-smi
-
-  # Lint and type-check inside container
-  lint:
-  	docker compose run --rm test python -m ruff check src/
-  	docker compose run --rm test python -m mypy src/
-  ```
-
-  ### Step 9: Environment File (.env.docker)
-  ```bash
-  # Docker ML Environment Configuration
-  # Copy to .env and customize
-
-  # CUDA / GPU
-  CUDA_VISIBLE_DEVICES=all
-  NVIDIA_VISIBLE_DEVICES=all
-
-  # MLflow
-  MLFLOW_PORT=5000
-
-  # PostgreSQL (MLflow metadata)
-  POSTGRES_USER=mlflow
-  POSTGRES_PASSWORD=CHANGE_ME_GENERATE_STRONG_PASSWORD
-  POSTGRES_DB=mlflow
-
-  # MinIO (artifact storage) — CHANGE these before first run!
-  MINIO_ACCESS_KEY=minioadmin
-  MINIO_SECRET_KEY=CHANGE_ME_GENERATE_STRONG_PASSWORD
-  MINIO_PORT=9000
-  MINIO_CONSOLE_PORT=9001
-
-  # Jupyter
-  NOTEBOOK_PORT=8888
-  JUPYTER_TOKEN=dev
-
-  # Serving
-  SERVE_PORT=8080
-  ```
-
-  ---
-
-  ## SCOPE: training_only
-
-  Set up Docker for training only:
-  1. Generate `Dockerfile.base` and `Dockerfile.train`
-  2. Create `docker-compose.yaml` with `train` service only
-  3. Create `docker-compose.gpu.yaml` overlay
-  4. Add `scripts/docker-train.sh` convenience script
-  5. Add `Makefile` with `train`, `gpu-train`, `test` targets
-
-  ---
-
-  ## SCOPE: serving_only
-
-  Set up Docker for model serving only:
-  1. Generate `Dockerfile.serve` (slim image)
-  2. Create `docker-compose.yaml` with `serve` service
-  3. Add health checks and resource limits
-  4. Configure model volume mount
-  5. Add `scripts/docker-serve.sh` convenience script
-
-  ---
-
-  ## SCOPE: notebook_only
-
-  Set up Docker for Jupyter notebooks:
-  1. Generate `Dockerfile.notebook` (base + JupyterLab + extensions)
-  2. Create `docker-compose.yaml` with `notebook` service
-  3. Configure volume mounts for notebooks, data, source code
-  4. Add GPU overlay for GPU-accelerated notebooks
-  5. Token-based auth by default
-
-  ---
-
-  ## SCOPE: mlflow_server
-
-  Set up Docker for MLflow tracking:
-  1. Generate `Dockerfile.mlflow` (lightweight Python + mlflow server)
-  2. Create `docker-compose.yaml` with `mlflow` + `postgres` + `minio` + `minio-init`
-  3. Configure health checks for all services
-  4. Set up persistent volumes for data and artifacts
-  5. Generate `.env.docker` template
-
-  ---
-
-  ## SCOPE: ci_cd_pipeline
-
-  Set up Docker-based CI/CD for ML:
-
-  ### GitHub Actions Workflow
-  ```yaml
-  name: ML Pipeline CI
-  on:
-    push:
-      paths: ['src/**', 'configs/**', 'requirements/**', 'docker/**']
-    pull_request:
-      paths: ['src/**', 'configs/**', 'requirements/**', 'docker/**']
-
-  jobs:
-    lint-and-test:
-      runs-on: ubuntu-latest
-      steps:
-        - uses: actions/checkout@v4
-        - name: Build test image
-          run: docker compose build test
-        - name: Run linting
-          run: docker compose run --rm test ruff check src/
-        - name: Run type checking
-          run: docker compose run --rm test mypy src/
-        - name: Run tests
-          run: docker compose run --rm test pytest tests/ -v --tb=short
-
-    build-training:
-      runs-on: ubuntu-latest
-      needs: lint-and-test
-      steps:
-        - uses: actions/checkout@v4
-        - name: Build training image
-          run: docker compose build train
-        - name: Smoke test (CPU)
-          run: docker compose run --rm train python -c "import torch; print(f'PyTorch {torch.__version__}')"
-
-    build-serving:
-      runs-on: ubuntu-latest
-      needs: lint-and-test
-      steps:
-        - uses: actions/checkout@v4
-        - name: Build serving image
-          run: docker compose build serve
-        - name: Health check test
-          run: |
-            docker compose up -d serve
-            sleep 10
-            curl -f http://localhost:8080/health || exit 1
-            docker compose down
-  ```
-
-  ---
-
-  ## DOCKER BEST PRACTICES CHECKLIST
-  - [ ] No `latest` tags — all images pinned to specific versions
-  - [ ] Multi-stage builds used (separate build, train, serve stages)
-  - [ ] Non-root user created and used (`mluser`)
+  ## Docker Best Practices Checklist
+  - [ ] No `latest` tags — all images pinned
+  - [ ] Multi-stage builds (separate build, train, serve)
+  - [ ] Non-root user (`mluser`)
   - [ ] `.dockerignore` excludes data, checkpoints, .git, __pycache__
   - [ ] Health checks on all long-running services
   - [ ] GPU passthrough via `deploy.resources.reservations.devices`
-  - [ ] Secrets in `.env` (not Dockerfile or compose)
-  - [ ] Requirements split: `base.txt`, `train.txt`, `serve.txt`, `test.txt`
-  - [ ] Dependency layers cached (COPY requirements before source code)
-  - [ ] Volumes for persistent data (PostgreSQL, MinIO, checkpoints)
-  - [ ] Network isolation between ML services
-  - [ ] Resource limits set on serving containers
+  - [ ] Secrets in `.env` (not Dockerfile)
+  - [ ] Requirements split: base.txt, train.txt, serve.txt, test.txt
+  - [ ] Dependency layers cached (COPY requirements before source)
   - [ ] Read-only mounts where possible (`:ro`)
-  - [ ] No model weights baked into images (mount or download at runtime)
-  - [ ] `pip freeze > requirements.lock` captured during build
-  - [ ] CUDA version pinned in Dockerfile (not inherited from host)
-
-prompt: "Set up Docker ML environment for: {{ project_path }}"
-
+  - [ ] No model weights baked into images
+  - [ ] CUDA version pinned in Dockerfile
+prompt: 'Set up Docker ML environment for: {{ project_path }}'
 activities:
-  - "message: **Docker ML Environment Agent** initializing..."
-  - "Detecting project structure at {{ project_path }}"
-  - "Generating {{ setup_scope }} Docker infrastructure"
-  - "Creating multi-stage Dockerfiles for {{ gpu_framework }} + CUDA {{ cuda_version }}"
-  - "Setting up docker-compose with GPU overlay"
-  - "Configuring MLflow + PostgreSQL + MinIO services"
-  - "Creating Makefile and convenience scripts"
-  - "Validating Docker best practices checklist"
-
+- 'message: **Docker ML Environment Agent** initializing...'
+- Detecting project structure at {{ project_path }}
+- Generating {{ setup_scope }} Docker infrastructure
+- Creating multi-stage Dockerfiles for {{ gpu_framework }} + CUDA {{ cuda_version }}
+- Setting up docker-compose with GPU overlay
+- Configuring MLflow + PostgreSQL + MinIO services
+- Creating Makefile and convenience scripts
+- Validating Docker best practices checklist
 extensions:
-  - type: builtin
-    name: developer
-    description: "Write Dockerfiles, compose files, Makefiles, and shell scripts"
-    timeout: 300
-    bundled: true
-
+- type: builtin
+  name: developer
+  description: Write Dockerfiles, compose files, Makefiles, and shell scripts
+  timeout: 300
+  bundled: true
 settings:
   temperature: 0.2
   max_turns: 50

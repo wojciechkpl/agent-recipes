@@ -1,81 +1,72 @@
-version: "1.0.0"
-title: "MLflow Experiment Tracking"
-description: >
-  Integrates MLflow for comprehensive ML experiment tracking. Handles experiment setup,
-  run configuration, metric logging, artifact management, model registry, hyperparameter
-  optimization (via Optuna/Hyperopt), and experiment comparison. Produces reproducible
-  experiment records with full provenance. Self-hostable and open-source.
-
+version: 1.0.0
+title: MLflow Experiment Tracking
+description: Integrates MLflow for ML experiment tracking, model registry, hyperparameter optimization.
+  Use for ML projects needing reproducible experiments.
 parameters:
-  - key: experiment_name
-    input_type: string
-    requirement: required
-    description: "MLflow experiment name for organizing runs"
-  - key: tracking_uri
-    input_type: string
-    requirement: optional
-    default: "mlruns"
-    description: "MLflow tracking URI (local path, SQLite, or remote server e.g. http://localhost:5000)"
-  - key: tracking_scope
-    input_type: select
-    requirement: required
-    description: "What aspect of experiment tracking to set up"
-    options:
-      - full_setup
-      - training_loop
-      - hyperparameter_optimization
-      - artifact_management
-      - model_registry
-      - comparison_report
-  - key: framework
-    input_type: select
-    requirement: optional
-    default: "pytorch"
-    description: "ML framework being used"
-    options:
-      - pytorch
-      - pytorch_lightning
-      - tensorflow
-      - jax
-      - sklearn
-      - custom
-  - key: project_path
-    input_type: string
-    requirement: optional
-    default: "."
-    description: "Path to the ML project codebase"
-  - key: hpo_engine
-    input_type: select
-    requirement: optional
-    default: "optuna"
-    description: "Hyperparameter optimization engine"
-    options:
-      - optuna
-      - hyperopt
-      - manual
-
+- key: experiment_name
+  input_type: string
+  requirement: required
+  description: MLflow experiment name for organizing runs
+- key: tracking_uri
+  input_type: string
+  requirement: optional
+  default: mlruns
+  description: MLflow tracking URI (local path, SQLite, or remote server e.g. http://localhost:5000)
+- key: tracking_scope
+  input_type: select
+  requirement: required
+  description: What aspect of experiment tracking to set up
+  options:
+  - full_setup
+  - training_loop
+  - hyperparameter_optimization
+  - artifact_management
+  - model_registry
+  - comparison_report
+- key: framework
+  input_type: select
+  requirement: optional
+  default: pytorch
+  description: ML framework being used
+  options:
+  - pytorch
+  - pytorch_lightning
+  - tensorflow
+  - jax
+  - sklearn
+  - custom
+- key: project_path
+  input_type: string
+  requirement: optional
+  default: .
+  description: Path to the ML project codebase
+- key: hpo_engine
+  input_type: select
+  requirement: optional
+  default: optuna
+  description: Hyperparameter optimization engine
+  options:
+  - optuna
+  - hyperopt
+  - manual
 instructions: |
-  You are an MLflow experiment tracking integration agent. You set up comprehensive experiment
-  tracking that ensures full reproducibility, enables hyperparameter optimization, and
-  produces publication-quality experiment reports. MLflow is open-source and self-hostable.
-
-  ## Experiment: {{ experiment_name }}
-  ## Tracking URI: {{ tracking_uri }}
-  ## Scope: {{ tracking_scope }}
+  ## Experiment Name: {{ experiment_name }}
+  ## Tracking Uri: {{ tracking_uri }}
+  ## Tracking Scope: {{ tracking_scope }}
   ## Framework: {{ framework }}
   ## Project Path: {{ project_path }}
-  ## HPO Engine: {{ hpo_engine }}
+  ## Hpo Engine: {{ hpo_engine }}
 
-  ---
+  You are an MLflow experiment tracking integration agent. You set up comprehensive experiment tracking that ensures full reproducibility, enables hyperparameter optimization, and produces publication-quality experiment reports.
 
-  ## CORE PRINCIPLES
+  ## Core Principles
 
-  ### 1. Track Everything Needed for Reproducibility
+  ### 1. Track Everything for Reproducibility
   Every experiment run must record:
   - **Params**: ALL hyperparameters, architecture choices, data paths, seeds
-  - **Metrics**: Loss, accuracy, and custom metrics — per step AND per epoch
-  - **System tags**: GPU info, OS, Python version (auto via mlflow.set_tag)
-  - **Code**: Git commit SHA, source file (auto via mlflow.autolog or explicit)
+  - **Metrics**: Loss, accuracy, custom metrics — per step AND per epoch
+  - **System tags**: GPU info, OS, Python version
+  - **Code**: Git commit SHA, source file
   - **Data**: Dataset version/hash, preprocessing params, split ratios
   - **Artifacts**: Model checkpoints, plots, configs, requirements.txt
 
@@ -83,1132 +74,127 @@ instructions: |
   ```
   Experiment names:  {project}/{task}  (e.g. "my-project/recommendations")
   Run names:         {experiment}_{variant}_{timestamp}
-  Tags:              mlflow.runName, task_type=[train|eval|sweep|data-prep|analysis]
+  Tags:              task_type=[train|eval|sweep|data-prep|analysis]
                      variant=[baseline|ablation|sweep|final|debug]
   Artifact paths:    models/, datasets/, results/, configs/, plots/
   ```
 
   ### 3. Model Registry Lifecycle
-  - **None** → **Staging** → **Production** → **Archived**
-  - Model versions are immutable — never overwrite a registered version
+  ```
+  None → Staging → Production → Archived
+  ```
+  - Model versions are immutable — never overwrite
   - Every production promotion requires: test metrics logged, reviewer tag set
-  ```
-  Registered Model: "{project}-{model_name}"
-  Version aliases:  @champion, @challenger, @latest
-  ```
 
-  ---
+  ## Core Configuration Module
 
-  ## SCOPE: full_setup
+  Create `src/tracking/mlflow_config.py` with:
+  - `ExperimentConfig` dataclass: typed hyperparameters with `flat_params()` for logging
+  - `compute_data_hash()`: SHA256 hash of dataset for versioning
+  - `get_git_info()`: Capture commit SHA, branch, dirty status
+  - `get_system_info()`: Python version, GPU info, CUDA version
+  - `init_mlflow()`: Initialize run with full metadata, log params, save config artifact
 
-  Set up a complete MLflow integration from scratch:
+  ## Metric Logging
 
-  ### Step 1: Project Structure
-  Create/update the following files:
-  ```
-  {{ project_path }}/
-  ├── configs/
-  │   ├── default.yaml              # Default hyperparameters
-  │   ├── hpo_config.yaml           # Optuna/Hyperopt search space
-  │   └── experiment/               # Named experiment configs
-  │       ├── baseline.yaml
-  │       └── ablation_*.yaml
-  ├── src/
-  │   ├── tracking/
-  │   │   ├── __init__.py
-  │   │   ├── mlflow_config.py      # MLflow initialization & config
-  │   │   ├── metrics.py            # Custom metric loggers
-  │   │   ├── callbacks.py          # Training callbacks with MLflow hooks
-  │   │   ├── artifacts.py          # Artifact upload/download utilities
-  │   │   └── registry.py           # Model Registry operations
-  │   └── ...
-  ├── scripts/
-  │   ├── run_experiment.py         # Single experiment runner
-  │   ├── run_hpo.py                # Hyperparameter optimization launcher
-  │   └── compare_runs.py           # Generate comparison reports
-  └── .env                          # MLFLOW_TRACKING_URI (optional)
-  ```
+  Create `src/tracking/metrics.py` with:
+  - `MetricTracker` class: Accumulates per-step metrics, aggregates epoch-level (mean/min/max)
+  - `log_confusion_matrix()`: Save as PNG artifact
+  - `log_roc_curve()`: Save as PNG artifact
+  - `log_precision_recall()`: Save as PNG artifact
+  - `log_custom_table()`: Save as JSON artifact
 
-  ### Step 2: Core MLflow Configuration Module
+  ## Training Loop Integration (PyTorch)
+
   ```python
-  """mlflow_config.py — Centralized MLflow initialization and configuration."""
-  from __future__ import annotations
+  with init_mlflow(config=config, run_name=f"{config.model_name}_{config.dataset}"):
+      mlflow.pytorch.autolog(log_every_n_epoch=1, log_models=False)
 
-  import os
-  import hashlib
-  import json
-  import platform
-  import subprocess
-  from dataclasses import dataclass, asdict
-  from pathlib import Path
-  from typing import Any
+      train_tracker = MetricTracker(prefix="train")
+      val_tracker = MetricTracker(prefix="val")
+      best_val_loss = float("inf")
 
-  import mlflow
-  from mlflow.tracking import MlflowClient
+      for epoch in range(config.max_epochs):
+          # Training with per-step logging
+          for batch_idx, (x, y) in enumerate(train_loader):
+              loss = train_step(model, optimizer, criterion, x, y)
+              train_tracker.log_step({"loss": loss}, global_step=global_step)
 
+          train_tracker.log_epoch(epoch)
 
-  @dataclass
-  class ExperimentConfig:
-      """Typed experiment configuration — logged to MLflow as run params."""
-
-      # Model
-      model_name: str = "default"
-      hidden_dim: int = 256
-      num_layers: int = 4
-      dropout: float = 0.1
-      activation: str = "gelu"
-
-      # Training
-      learning_rate: float = 1e-3
-      weight_decay: float = 1e-4
-      batch_size: int = 64
-      max_epochs: int = 100
-      warmup_steps: int = 1000
-      gradient_clip_norm: float = 1.0
-      optimizer: str = "adamw"
-      scheduler: str = "cosine"
-
-      # Data
-      dataset: str = "default"
-      train_split: float = 0.8
-      val_split: float = 0.1
-      test_split: float = 0.1
-      num_workers: int = 4
-      seed: int = 42
-
-      # Evaluation
-      eval_every_n_epochs: int = 1
-      early_stopping_patience: int = 10
-      early_stopping_metric: str = "val_loss"
-      early_stopping_mode: str = "min"
-
-      def to_dict(self) -> dict[str, Any]:
-          return asdict(self)
-
-      def flat_params(self) -> dict[str, Any]:
-          """Flatten config to a dict of primitive values for mlflow.log_params."""
-          return {k: str(v) if not isinstance(v, (int, float, str, bool)) else v
-                  for k, v in self.to_dict().items()}
-
-
-  def compute_data_hash(data_path: str | Path) -> str:
-      """Compute SHA256 hash of dataset for versioning."""
-      h = hashlib.sha256()
-      path = Path(data_path)
-      if path.is_file():
-          h.update(path.read_bytes())
-      elif path.is_dir():
-          for f in sorted(path.rglob("*")):
-              if f.is_file():
-                  h.update(str(f.relative_to(path)).encode())
-                  h.update(f.read_bytes())
-      return h.hexdigest()[:12]
-
-
-  def get_git_info() -> dict[str, str]:
-      """Capture git state for reproducibility."""
-      try:
-          sha = subprocess.check_output(
-              ["git", "rev-parse", "HEAD"], text=True
-          ).strip()
-          branch = subprocess.check_output(
-              ["git", "rev-parse", "--abbrev-ref", "HEAD"], text=True
-          ).strip()
-          dirty = bool(subprocess.check_output(
-              ["git", "status", "--porcelain"], text=True
-          ).strip())
-          return {"git_sha": sha, "git_branch": branch, "git_dirty": str(dirty)}
-      except Exception:
-          return {"git_sha": "unknown", "git_branch": "unknown", "git_dirty": "unknown"}
-
-
-  def get_system_info() -> dict[str, str]:
-      """Capture system information."""
-      info = {
-          "python_version": platform.python_version(),
-          "os": f"{platform.system()} {platform.release()}",
-          "hostname": platform.node(),
-      }
-      try:
-          import torch
-          info["torch_version"] = torch.__version__
-          info["cuda_available"] = str(torch.cuda.is_available())
-          if torch.cuda.is_available():
-              info["cuda_version"] = torch.version.cuda or "unknown"
-              info["gpu_name"] = torch.cuda.get_device_name(0)
-              info["gpu_memory_gb"] = f"{torch.cuda.get_device_properties(0).total_mem / 1e9:.1f}"
-      except ImportError:
-          pass
-      return info
-
-
-  def init_mlflow(
-      config: ExperimentConfig,
-      experiment_name: str = "{{ experiment_name }}",
-      tracking_uri: str = "{{ tracking_uri }}",
-      run_name: str | None = None,
-      tags: dict[str, str] | None = None,
-      nested: bool = False,
-      data_path: str | Path | None = None,
-      description: str = "",
-  ) -> mlflow.ActiveRun:
-      """
-      Initialize an MLflow run with full reproducibility metadata.
-
-      Args:
-          config: Typed experiment configuration
-          experiment_name: MLflow experiment name
-          tracking_uri: MLflow tracking server URI
-          run_name: Human-readable run name
-          tags: Dict of tags for filtering and organizing runs
-          nested: Whether this is a nested run (e.g., inside HPO)
-          data_path: Path to dataset for hashing
-          description: Free-text description for this run
-
-      Returns:
-          mlflow.ActiveRun context manager
-      """
-      # Set tracking URI
-      mlflow.set_tracking_uri(tracking_uri)
-
-      # Set or create experiment
-      mlflow.set_experiment(experiment_name)
-
-      # Build tags
-      run_tags = {
-          "mlflow.note.content": description,
-          **(tags or {}),
-      }
-
-      # Add git and system info as tags
-      git_info = get_git_info()
-      sys_info = get_system_info()
-      for k, v in {**git_info, **sys_info}.items():
-          run_tags[f"env.{k}"] = v
-
-      if data_path:
-          run_tags["data.hash"] = compute_data_hash(data_path)
-          run_tags["data.path"] = str(data_path)
-
-      # Start run
-      run = mlflow.start_run(
-          run_name=run_name,
-          tags=run_tags,
-          nested=nested,
-          description=description,
-      )
-
-      # Log all hyperparameters as params
-      mlflow.log_params(config.flat_params())
-
-      # Log config as artifact for full reproducibility
-      config_path = Path("_mlflow_config.json")
-      config_path.write_text(json.dumps(config.to_dict(), indent=2, default=str))
-      mlflow.log_artifact(str(config_path), artifact_path="configs")
-      config_path.unlink()
-
-      return run
+          # Validation with early stopping
+          val_loss = evaluate(model, val_loader)
+          if val_loss < best_val_loss:
+              best_val_loss = val_loss
+              mlflow.pytorch.log_model(model, artifact_path="models/best")
   ```
 
-  ### Step 3: Metric Logging Module
+  ## Hyperparameter Optimization (Optuna + MLflow)
+
   ```python
-  """metrics.py — Structured metric logging with MLflow."""
-  from __future__ import annotations
-
-  import time
-  from dataclasses import dataclass, field
-  from typing import Any
-
-  import mlflow
-
-
-  @dataclass
-  class MetricTracker:
-      """Accumulates and logs metrics with proper step alignment."""
-
-      prefix: str = "train"
-      _step_metrics: dict[str, list[float]] = field(default_factory=dict)
-      _epoch_start: float = 0.0
-
-      def log_step(self, metrics: dict[str, float], global_step: int) -> None:
-          """Log per-step (per-batch) metrics."""
-          for k, v in metrics.items():
-              mlflow.log_metric(f"{self.prefix}/{k}", v, step=global_step)
-
-          # Accumulate for epoch-level aggregation
-          for k, v in metrics.items():
-              self._step_metrics.setdefault(k, []).append(v)
-
-      def log_epoch(self, epoch: int, extra_metrics: dict[str, float] | None = None) -> None:
-          """Log epoch-level aggregated metrics."""
-          for k, values in self._step_metrics.items():
-              mlflow.log_metric(f"{self.prefix}/epoch_{k}_mean", sum(values) / len(values), step=epoch)
-              mlflow.log_metric(f"{self.prefix}/epoch_{k}_min", min(values), step=epoch)
-              mlflow.log_metric(f"{self.prefix}/epoch_{k}_max", max(values), step=epoch)
-
-          if extra_metrics:
-              for k, v in extra_metrics.items():
-                  mlflow.log_metric(f"{self.prefix}/{k}", v, step=epoch)
-
-          mlflow.log_metric("epoch_time", time.time() - self._epoch_start, step=epoch)
-          self._step_metrics.clear()
-          self._epoch_start = time.time()
-
-
-  def log_confusion_matrix(
-      y_true: list,
-      y_pred: list,
-      class_names: list[str],
-      artifact_path: str = "plots",
-  ) -> None:
-      """Log a confusion matrix as an artifact (saved as PNG)."""
-      import matplotlib.pyplot as plt
-      from sklearn.metrics import ConfusionMatrixDisplay, confusion_matrix
-
-      cm = confusion_matrix(y_true, y_pred, labels=range(len(class_names)))
-      disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=class_names)
-      disp.plot(cmap="Blues")
-      plt.title("Confusion Matrix")
-      plt.tight_layout()
-
-      path = "_confusion_matrix.png"
-      plt.savefig(path, dpi=150)
-      plt.close()
-      mlflow.log_artifact(path, artifact_path=artifact_path)
-      import os; os.unlink(path)
-
-
-  def log_roc_curve(
-      y_true: list,
-      y_scores: list,
-      labels: list[str],
-      artifact_path: str = "plots",
-  ) -> None:
-      """Log ROC curve as an artifact (saved as PNG)."""
-      import matplotlib.pyplot as plt
-      from sklearn.metrics import RocCurveDisplay
-
-      fig, ax = plt.subplots()
-      for i, label in enumerate(labels):
-          y_score_i = [s[i] if isinstance(s, (list, tuple)) else s for s in y_scores]
-          y_true_i = [1 if t == i else 0 for t in y_true]
-          RocCurveDisplay.from_predictions(y_true_i, y_score_i, name=label, ax=ax)
-
-      plt.title("ROC Curve")
-      plt.tight_layout()
-      path = "_roc_curve.png"
-      plt.savefig(path, dpi=150)
-      plt.close()
-      mlflow.log_artifact(path, artifact_path=artifact_path)
-      import os; os.unlink(path)
-
-
-  def log_precision_recall(
-      y_true: list,
-      y_scores: list,
-      labels: list[str],
-      artifact_path: str = "plots",
-  ) -> None:
-      """Log precision-recall curve as an artifact (saved as PNG)."""
-      import matplotlib.pyplot as plt
-      from sklearn.metrics import PrecisionRecallDisplay
-
-      fig, ax = plt.subplots()
-      for i, label in enumerate(labels):
-          y_score_i = [s[i] if isinstance(s, (list, tuple)) else s for s in y_scores]
-          y_true_i = [1 if t == i else 0 for t in y_true]
-          PrecisionRecallDisplay.from_predictions(y_true_i, y_score_i, name=label, ax=ax)
-
-      plt.title("Precision-Recall Curve")
-      plt.tight_layout()
-      path = "_pr_curve.png"
-      plt.savefig(path, dpi=150)
-      plt.close()
-      mlflow.log_artifact(path, artifact_path=artifact_path)
-      import os; os.unlink(path)
-
-
-  def log_custom_table(
-      table_data: list[dict],
-      name: str,
-      artifact_path: str = "tables",
-  ) -> None:
-      """Log a custom data table as a JSON artifact."""
-      import json
-      path = f"_{name}.json"
-      with open(path, "w") as f:
-          json.dump(table_data, f, indent=2, default=str)
-      mlflow.log_artifact(path, artifact_path=artifact_path)
-      import os; os.unlink(path)
-  ```
-
-  ### Step 4: Artifact & Model Registry Management
-  ```python
-  """artifacts.py — MLflow artifact upload/download and Model Registry operations."""
-  from __future__ import annotations
-
-  from pathlib import Path
-  from typing import Any
-
-  import mlflow
-  from mlflow.tracking import MlflowClient
-
-
-  def log_model_checkpoint(
-      model: Any,
-      name: str,
-      flavor: str = "pytorch",
-      metadata: dict[str, Any] | None = None,
-      register: bool = False,
-      registered_model_name: str | None = None,
-  ) -> str:
-      """
-      Log a model as an MLflow artifact and optionally register it.
-
-      Args:
-          model: The model object (PyTorch module, sklearn estimator, etc.)
-          name: Artifact path name for the model
-          flavor: MLflow model flavor ('pytorch', 'sklearn', 'tensorflow', etc.)
-          metadata: Extra metadata to log as tags
-          register: Whether to register in the Model Registry
-          registered_model_name: Name for registered model (defaults to name)
-
-      Returns:
-          Model URI string
-      """
-      log_fn = getattr(mlflow, flavor)
-
-      # Log model with appropriate flavor
-      model_info = log_fn.log_model(
-          model,
-          artifact_path=f"models/{name}",
-          registered_model_name=registered_model_name if register else None,
-      )
-
-      # Log metadata as tags
-      if metadata:
-          for k, v in metadata.items():
-              mlflow.set_tag(f"model.{name}.{k}", str(v))
-
-      return model_info.model_uri
-
-
-  def log_model_file(
-      model_path: str | Path,
-      name: str,
-      metadata: dict[str, Any] | None = None,
-  ) -> None:
-      """Log a model checkpoint file as an artifact (for custom serialization)."""
-      path = Path(model_path)
-      if path.is_dir():
-          mlflow.log_artifacts(str(path), artifact_path=f"models/{name}")
-      else:
-          mlflow.log_artifact(str(path), artifact_path=f"models/{name}")
-
-      if metadata:
-          for k, v in metadata.items():
-              mlflow.set_tag(f"model.{name}.{k}", str(v))
-
-
-  def log_dataset(
-      data_path: str | Path,
-      name: str,
-      metadata: dict[str, Any] | None = None,
-  ) -> None:
-      """Log a dataset as an MLflow artifact."""
-      path = Path(data_path)
-      if path.is_dir():
-          mlflow.log_artifacts(str(path), artifact_path=f"datasets/{name}")
-      else:
-          mlflow.log_artifact(str(path), artifact_path=f"datasets/{name}")
-
-      if metadata:
-          for k, v in metadata.items():
-              mlflow.set_tag(f"dataset.{name}.{k}", str(v))
-
-
-  def log_evaluation_results(
-      results: dict[str, Any],
-      name: str,
-      table_data: list[dict] | None = None,
-  ) -> None:
-      """Log evaluation results as a JSON artifact."""
-      import json
-      import tempfile
-
-      # Save results as JSON file
-      with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
-          json.dump(results, f, indent=2, default=str)
-          temp_path = f.name
-
-      mlflow.log_artifact(temp_path, artifact_path=f"results/{name}")
-      Path(temp_path).unlink()
-
-      # Optionally save table data
-      if table_data:
-          with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
-              json.dump(table_data, f, indent=2, default=str)
-              temp_path = f.name
-          mlflow.log_artifact(temp_path, artifact_path=f"results/{name}")
-          Path(temp_path).unlink()
-
-      # Log result metrics for easy filtering
-      for k, v in results.items():
-          if isinstance(v, (int, float)):
-              mlflow.log_metric(f"eval/{k}", v)
-
-
-  def download_artifact(
-      run_id: str,
-      artifact_path: str,
-      tracking_uri: str = "{{ tracking_uri }}",
-      download_dir: str | Path = "./artifacts",
-  ) -> Path:
-      """Download an artifact from a specific MLflow run."""
-      mlflow.set_tracking_uri(tracking_uri)
-      client = MlflowClient()
-      local_path = client.download_artifacts(run_id, artifact_path, dst_path=str(download_dir))
-      return Path(local_path)
-
-
-  # --- Model Registry Operations ---
-
-  def register_model(
-      model_uri: str,
-      name: str,
-      tags: dict[str, str] | None = None,
-  ) -> int:
-      """Register a model version from a logged model URI."""
-      result = mlflow.register_model(model_uri, name)
-      if tags:
-          client = MlflowClient()
-          for k, v in tags.items():
-              client.set_model_version_tag(name, result.version, k, v)
-      return int(result.version)
-
-
-  def promote_model(
-      name: str,
-      version: int,
-      stage: str = "Staging",
-      archive_existing: bool = True,
-  ) -> None:
-      """
-      Promote a model version to a new stage.
-
-      Stages: None → Staging → Production → Archived
-      """
-      client = MlflowClient()
-      if archive_existing:
-          # Archive existing models in the target stage
-          for mv in client.search_model_versions(f"name='{name}'"):
-              if mv.current_stage == stage:
-                  client.transition_model_version_stage(
-                      name, mv.version, "Archived"
-                  )
-      client.transition_model_version_stage(name, str(version), stage)
-
-
-  def load_production_model(
-      name: str,
-      tracking_uri: str = "{{ tracking_uri }}",
-  ) -> Any:
-      """Load the current Production model from the registry."""
-      mlflow.set_tracking_uri(tracking_uri)
-      model_uri = f"models:/{name}/Production"
-      return mlflow.pyfunc.load_model(model_uri)
-
-
-  def get_model_lineage(name: str) -> list[dict]:
-      """Get full version history of a registered model."""
-      client = MlflowClient()
-      versions = client.search_model_versions(f"name='{name}'")
-      lineage = []
-      for v in sorted(versions, key=lambda x: int(x.version)):
-          lineage.append({
-              "version": v.version,
-              "stage": v.current_stage,
-              "run_id": v.run_id,
-              "created": str(v.creation_timestamp),
-              "description": v.description or "",
-              "tags": dict(v.tags) if v.tags else {},
-          })
-      return lineage
-  ```
-
-  ---
-
-  ## SCOPE: training_loop
-
-  Integrate MLflow into an existing training loop. Generate framework-specific code:
-
-  ### PyTorch Training Loop Integration
-  ```python
-  """Example PyTorch training loop with full MLflow integration."""
-  import torch
-  import torch.nn as nn
-  from torch.utils.data import DataLoader
-
-  import mlflow
-  import mlflow.pytorch
-  from tracking.mlflow_config import ExperimentConfig, init_mlflow
-  from tracking.metrics import MetricTracker
-  from tracking.artifacts import log_model_file, register_model
-
-
-  def train(config: ExperimentConfig) -> None:
-      # 1. Initialize MLflow
-      with init_mlflow(
-          config=config,
-          run_name=f"{config.model_name}_{config.dataset}",
-          tags={
-              "task_type": "train",
-              "variant": config.model_name,
-          },
-      ):
-          # 2. Enable autologging (captures model summary, optimizer, loss)
-          mlflow.pytorch.autolog(
-              log_every_n_epoch=1,
-              log_models=False,  # We handle model logging manually for more control
-          )
-
-          # 3. Set up model, optimizer, scheduler
-          model = build_model(config)
-          optimizer = torch.optim.AdamW(
-              model.parameters(), lr=config.learning_rate, weight_decay=config.weight_decay
-          )
-          scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-              optimizer, T_max=config.max_epochs
-          )
-          criterion = nn.CrossEntropyLoss()
-
-          # 4. Training loop with metric tracking
-          train_tracker = MetricTracker(prefix="train")
-          val_tracker = MetricTracker(prefix="val")
-          best_val_loss = float("inf")
-          patience_counter = 0
-          global_step = 0
-
-          for epoch in range(config.max_epochs):
-              # --- Training ---
-              model.train()
-              for batch_idx, (x, y) in enumerate(train_loader):
-                  optimizer.zero_grad()
-                  logits = model(x)
-                  loss = criterion(logits, y)
-                  loss.backward()
-
-                  # Gradient clipping
-                  grad_norm = torch.nn.utils.clip_grad_norm_(
-                      model.parameters(), config.gradient_clip_norm
-                  )
-
-                  optimizer.step()
-                  global_step += 1
-
-                  # Log per-step metrics
-                  train_tracker.log_step(
-                      {"loss": loss.item(), "grad_norm": grad_norm.item(),
-                       "lr": optimizer.param_groups[0]["lr"]},
-                      global_step=global_step,
-                  )
-
-              # Log epoch-level training metrics
-              train_tracker.log_epoch(epoch)
-
-              # --- Validation ---
-              if epoch % config.eval_every_n_epochs == 0:
-                  val_loss, val_metrics = evaluate(model, val_loader, criterion)
-                  val_tracker.log_step(
-                      {"loss": val_loss, **val_metrics}, global_step=global_step
-                  )
-                  val_tracker.log_epoch(epoch)
-
-                  # Early stopping & checkpointing
-                  if val_loss < best_val_loss:
-                      best_val_loss = val_loss
-                      patience_counter = 0
-
-                      # Save best model as MLflow artifact
-                      model_path = "best_model.pt"
-                      torch.save(model.state_dict(), model_path)
-                      log_model_file(
-                          model_path,
-                          name=config.model_name,
-                          metadata={"epoch": epoch, "val_loss": val_loss, **val_metrics},
-                      )
-
-                      # Also log with MLflow PyTorch flavor for Model Registry
-                      model_info = mlflow.pytorch.log_model(
-                          model,
-                          artifact_path=f"models/{config.model_name}_best",
-                      )
-
-                      mlflow.log_metric("best_val_loss", val_loss)
-                      mlflow.set_tag("best_epoch", str(epoch))
-                  else:
-                      patience_counter += 1
-                      if patience_counter >= config.early_stopping_patience:
-                          print(f"Early stopping at epoch {epoch}")
-                          break
-
-              scheduler.step()
-
-          # 5. Final summary metrics
-          mlflow.log_metric("final_train_loss", loss.item())
-          mlflow.log_metric("total_epochs", epoch + 1)
-
-          # 6. Optionally register the best model
-          if model_info:
-              register_model(
-                  model_uri=model_info.model_uri,
-                  name=f"{{ experiment_name }}-{config.model_name}",
-                  tags={"best_val_loss": str(best_val_loss)},
-              )
-  ```
-
-  ---
-
-  ## SCOPE: hyperparameter_optimization
-
-  Set up hyperparameter optimization with Optuna + MLflow tracking:
-
-  ### Optuna + MLflow Integration
-  ```python
-  """run_hpo.py — Hyperparameter optimization with Optuna + MLflow tracking."""
-  from __future__ import annotations
-
-  import optuna
   from optuna.integration.mlflow import MLflowCallback
 
-  import mlflow
-  from tracking.mlflow_config import ExperimentConfig, init_mlflow
-
-
-  def create_study(
-      study_name: str = "{{ experiment_name }}-hpo",
-      direction: str = "minimize",
-      metric_name: str = "val_loss",
-      n_trials: int = 50,
-      timeout: int | None = None,
-      pruner: str = "hyperband",
-  ) -> optuna.Study:
-      """Create and run an Optuna study with MLflow tracking."""
-
-      # Configure pruner
-      if pruner == "hyperband":
-          optuna_pruner = optuna.pruners.HyperbandPruner(
-              min_resource=5,
-              max_resource=100,
-              reduction_factor=3,
-          )
-      elif pruner == "median":
-          optuna_pruner = optuna.pruners.MedianPruner(
-              n_startup_trials=5,
-              n_warmup_steps=10,
-          )
-      else:
-          optuna_pruner = optuna.pruners.NopPruner()
-
-      # Create study with SQLite storage for persistence
-      study = optuna.create_study(
-          study_name=study_name,
-          direction=direction,
-          pruner=optuna_pruner,
-          storage=f"sqlite:///{study_name}.db",
-          load_if_exists=True,
-      )
-
-      # MLflow callback — auto-logs each trial as a nested run
-      mlflow_callback = MLflowCallback(
-          tracking_uri="{{ tracking_uri }}",
-          metric_name=metric_name,
-          create_experiment=True,
-          mlflow_kwargs={
-              "nested": True,
-          },
-      )
-
-      study.optimize(
-          objective,
-          n_trials=n_trials,
-          timeout=timeout,
-          callbacks=[mlflow_callback],
-      )
-
-      return study
-
-
-  def objective(trial: optuna.Trial) -> float:
-      """Optuna objective function with MLflow tracking."""
-      # Sample hyperparameters
+  def objective(trial):
       config = ExperimentConfig(
-          learning_rate=trial.suggest_float("learning_rate", 1e-5, 1e-2, log=True),
+          learning_rate=trial.suggest_float("lr", 1e-5, 1e-2, log=True),
           hidden_dim=trial.suggest_categorical("hidden_dim", [64, 128, 256, 512]),
           num_layers=trial.suggest_int("num_layers", 2, 8),
           dropout=trial.suggest_float("dropout", 0.0, 0.5),
-          batch_size=trial.suggest_categorical("batch_size", [32, 64, 128, 256]),
-          weight_decay=trial.suggest_float("weight_decay", 1e-6, 1e-2, log=True),
-          optimizer=trial.suggest_categorical("optimizer", ["adamw", "adam", "sgd"]),
-          scheduler=trial.suggest_categorical("scheduler", ["cosine", "linear", "step", "none"]),
-          activation=trial.suggest_categorical("activation", ["relu", "gelu", "silu"]),
-          warmup_steps=trial.suggest_categorical("warmup_steps", [0, 500, 1000, 2000]),
       )
+      return train_and_evaluate(config, trial=trial)
 
-      # Train and evaluate (returns validation metric)
-      val_loss = train_and_evaluate(config, trial=trial)
-
-      return val_loss
-
-
-  def generate_hpo_config() -> dict:
-      """Generate an Optuna-compatible search space config (YAML-serializable)."""
-      return {
-          "study_name": "{{ experiment_name }}-hpo",
-          "direction": "minimize",
-          "metric": "val_loss",
-          "n_trials": 50,
-          "pruner": {
-              "type": "hyperband",
-              "min_resource": 5,
-              "max_resource": 100,
-              "reduction_factor": 3,
-          },
-          "search_space": {
-              "learning_rate": {"type": "float", "low": 1e-5, "high": 1e-2, "log": True},
-              "hidden_dim": {"type": "categorical", "choices": [64, 128, 256, 512]},
-              "num_layers": {"type": "int", "low": 2, "high": 8},
-              "dropout": {"type": "float", "low": 0.0, "high": 0.5},
-              "batch_size": {"type": "categorical", "choices": [32, 64, 128, 256]},
-              "weight_decay": {"type": "float", "low": 1e-6, "high": 1e-2, "log": True},
-              "optimizer": {"type": "categorical", "choices": ["adamw", "adam", "sgd"]},
-              "scheduler": {"type": "categorical", "choices": ["cosine", "linear", "step", "none"]},
-              "activation": {"type": "categorical", "choices": ["relu", "gelu", "silu"]},
-              "warmup_steps": {"type": "categorical", "choices": [0, 500, 1000, 2000]},
-          },
-      }
-
-
-  if __name__ == "__main__":
-      # Set up parent MLflow run for the entire HPO study
-      mlflow.set_tracking_uri("{{ tracking_uri }}")
-      mlflow.set_experiment("{{ experiment_name }}")
-
-      with mlflow.start_run(run_name="hpo-study", tags={"task_type": "sweep"}):
-          study = create_study()
-          # Log best results
-          mlflow.log_params({f"best_{k}": v for k, v in study.best_params.items()})
-          mlflow.log_metric("best_value", study.best_value)
-          mlflow.set_tag("best_trial", str(study.best_trial.number))
-
-          # Save study visualization
-          try:
-              fig = optuna.visualization.plot_param_importances(study)
-              fig.write_image("_param_importance.png")
-              mlflow.log_artifact("_param_importance.png", artifact_path="plots")
-
-              fig = optuna.visualization.plot_optimization_history(study)
-              fig.write_image("_optimization_history.png")
-              mlflow.log_artifact("_optimization_history.png", artifact_path="plots")
-          except Exception:
-              pass  # plotly may not be installed
+  study = optuna.create_study(pruner=optuna.pruners.HyperbandPruner())
+  study.optimize(objective, n_trials=50, callbacks=[MLflowCallback(nested=True)])
   ```
 
-  ### Hyperopt Alternative
-  ```python
-  """run_hpo_hyperopt.py — Alternative HPO with Hyperopt + MLflow."""
-  from hyperopt import fmin, tpe, hp, STATUS_OK, Trials
-  from hyperopt.pyll import scope
-  import mlflow
-
-  search_space = {
-      "learning_rate": hp.loguniform("learning_rate", -11.5, -4.6),  # ~1e-5 to 1e-2
-      "hidden_dim": hp.choice("hidden_dim", [64, 128, 256, 512]),
-      "num_layers": scope.int(hp.quniform("num_layers", 2, 8, 1)),
-      "dropout": hp.uniform("dropout", 0.0, 0.5),
-      "batch_size": hp.choice("batch_size", [32, 64, 128, 256]),
-  }
-
-  def hyperopt_objective(params):
-      with mlflow.start_run(nested=True):
-          mlflow.log_params(params)
-          val_loss = train_and_evaluate(ExperimentConfig(**params))
-          mlflow.log_metric("val_loss", val_loss)
-          return {"loss": val_loss, "status": STATUS_OK}
-
-  best = fmin(
-      fn=hyperopt_objective,
-      space=search_space,
-      algo=tpe.suggest,
-      max_evals=50,
-  )
-  ```
-
-  ---
-
-  ## SCOPE: artifact_management
-
-  Set up artifact pipelines for full data/model lineage:
-
-  ```mermaid
-  graph LR
-      subgraph "Data Pipeline"
-          Raw[(Raw Data v1)] -->|preprocess| Clean[(Clean Data v2)]
-          Clean -->|split| Splits[(Train/Val/Test)]
-      end
-      subgraph "Training Pipeline"
-          Splits --> Train[MLflow Run: Train]
-          Train --> Model[(Model Artifact)]
-          Train --> Metrics[(Logged Metrics)]
-      end
-      subgraph "Evaluation Pipeline"
-          Model --> Eval[MLflow Run: Eval]
-          Splits --> Eval
-          Eval --> Results[(Results Artifact)]
-      end
-      subgraph "Model Registry"
-          Model -->|register| Staging[v2: Staging]
-          Staging -->|promote| Prod[v1: Production]
-          Prod -->|archive| Archive[v0: Archived]
-      end
-  ```
-
-  Key artifact operations:
-  1. **Version datasets** — Log with `log_dataset()` whenever preprocessing changes
-  2. **Chain model lineage** — Each model artifact is linked to its training run (automatic in MLflow)
-  3. **Model Registry stages** — None → Staging → Production → Archived
-  4. **Artifact cleanup** — Delete old runs: `mlflow gc --experiment-id X --older-than 30d`
-  5. **Cross-run lineage** — Use `mlflow.set_tag("parent_run_id", ...)` to link related runs
-
-  ---
-
-  ## SCOPE: model_registry
-
-  Set up the MLflow Model Registry for lifecycle management:
+  ## Model Registry Operations
 
   ```python
-  """registry.py — Model Registry lifecycle management."""
-  from mlflow.tracking import MlflowClient
+  # Register best model
+  register_model(model_uri, name="project-model", tags={"best_val_loss": str(best)})
 
-  client = MlflowClient(tracking_uri="{{ tracking_uri }}")
+  # Promote: None → Staging → Production
+  promote_model(name="project-model", version=5, stage="Staging")
 
-  # 1. Register a new model
-  # (Usually done automatically when log_model is called with registered_model_name)
-  client.create_registered_model(
-      name="{{ experiment_name }}-model",
-      description="Production model for {{ experiment_name }}",
-      tags={"team": "ml", "domain": "{{ experiment_name }}"},
-  )
-
-  # 2. Promote best model to Staging
-  client.transition_model_version_stage(
-      name="{{ experiment_name }}-model",
-      version="5",
-      stage="Staging",
-  )
-
-  # 3. Run validation on Staging model, then promote to Production
-  client.transition_model_version_stage(
-      name="{{ experiment_name }}-model",
-      version="5",
-      stage="Production",
-      archive_existing_versions=True,  # Auto-archive current Production
-  )
-
-  # 4. Load Production model for serving
-  import mlflow.pyfunc
-  model = mlflow.pyfunc.load_model("models:/{{ experiment_name }}-model/Production")
-  predictions = model.predict(data)
+  # Load production model
+  model = mlflow.pyfunc.load_model("models:/project-model/Production")
   ```
 
-  ### Registry Lifecycle Diagram
-  ```mermaid
-  stateDiagram-v2
-      [*] --> None: log_model()
-      None --> Staging: promote(stage="Staging")
-      Staging --> Production: promote(stage="Production")
-      Production --> Archived: new Production replaces
-      Staging --> Archived: rejected
-      Archived --> [*]: delete_version()
+  ## Comparison Reports
 
-      note right of Staging
-          Run validation tests:
-          - Latency < 100ms p99
-          - Accuracy > threshold
-          - No data drift
-      end note
+  Generate markdown reports comparing runs:
+  - Params/metrics table sorted by primary metric
+  - Best configuration highlighted
+  - Key findings and recommendations
+  - Production config recommendation
 
-      note right of Production
-          Serving via:
-          - mlflow models serve
-          - SageMaker / Azure ML
-          - Custom FastAPI wrapper
-      end note
-  ```
-
-  ---
-
-  ## SCOPE: comparison_report
-
-  Generate a publication-ready comparison report from MLflow runs:
-
-  ```python
-  """compare_runs.py — Generate experiment comparison report from MLflow."""
-  import mlflow
-  from mlflow.tracking import MlflowClient
-
-
-  def create_comparison_report(
-      experiment_name: str = "{{ experiment_name }}",
-      tracking_uri: str = "{{ tracking_uri }}",
-      run_ids: list[str] | None = None,
-      filter_string: str = "",
-      max_runs: int = 10,
-  ) -> list[dict]:
-      """Create a comparison report from MLflow experiment runs."""
-      mlflow.set_tracking_uri(tracking_uri)
-      client = MlflowClient()
-
-      # Get experiment
-      experiment = client.get_experiment_by_name(experiment_name)
-      if not experiment:
-          raise ValueError(f"Experiment '{experiment_name}' not found")
-
-      # Fetch runs
-      if run_ids:
-          runs = [client.get_run(rid) for rid in run_ids]
-      else:
-          runs = client.search_runs(
-              experiment_ids=[experiment.experiment_id],
-              filter_string=filter_string or "status = 'FINISHED'",
-              order_by=["metrics.best_val_loss ASC"],
-              max_results=max_runs,
-          )
-
-      # Build comparison table
-      comparison = []
-      for run in runs:
-          row = {
-              "run_id": run.info.run_id[:8],
-              "name": run.info.run_name or run.info.run_id[:8],
-              "status": run.info.status,
-              "duration_min": (run.info.end_time - run.info.start_time) / 60000
-                  if run.info.end_time else None,
-              **{f"param/{k}": v for k, v in run.data.params.items()},
-              **{f"metric/{k}": v for k, v in run.data.metrics.items()
-                 if isinstance(v, (int, float))},
-          }
-          comparison.append(row)
-
-      # Print summary
-      print(f"\nComparison of {len(runs)} runs in '{experiment_name}'")
-      print("-" * 60)
-      for row in comparison:
-          val_loss = row.get("metric/best_val_loss", "N/A")
-          print(f"  {row['name']}: val_loss={val_loss}")
-
-      return comparison
-
-
-  def generate_report_markdown(comparison: list[dict]) -> str:
-      """Generate a markdown report from comparison data."""
-      # Extract unique param and metric keys
-      param_keys = sorted({k for row in comparison for k in row if k.startswith("param/")})
-      metric_keys = sorted({k for row in comparison for k in row if k.startswith("metric/")})
-
-      lines = [
-          f"# Experiment Report: {{ experiment_name }}",
-          "",
-          "## Overview",
-          "",
-          "| Run | " + " | ".join(k.split("/")[1] for k in param_keys[:5]) + " | " +
-          " | ".join(k.split("/")[1] for k in metric_keys[:5]) + " |",
-          "|-----|" + "------|" * (min(len(param_keys), 5) + min(len(metric_keys), 5)),
-      ]
-
-      for row in comparison:
-          params = " | ".join(str(row.get(k, "")) for k in param_keys[:5])
-          metrics = " | ".join(f"{row.get(k, '')}" for k in metric_keys[:5])
-          lines.append(f"| {row['name']} | {params} | {metrics} |")
-
-      lines.extend([
-          "",
-          "## Best Configuration",
-          "```yaml",
-          *[f"{k.split('/')[1]}: {comparison[0].get(k, '')}" for k in param_keys],
-          "```",
-          "",
-          "## Key Findings",
-          "1. [Most impactful hyperparameter and why]",
-          "2. [Surprising results or negative findings]",
-          "3. [Convergence behavior patterns]",
-          "",
-          "## Recommendation",
-          f"**Production config**: {comparison[0]['name']}",
-          f"**Best val_loss**: {comparison[0].get('metric/best_val_loss', 'N/A')}",
-      ])
-
-      return "\n".join(lines)
-  ```
-
-  ---
-
-  ## LAUNCHING MLFLOW UI
-
-  ```bash
-  # Local (file-based tracking)
-  mlflow ui --port 5000
-
-  # With SQLite backend (recommended for teams)
-  mlflow server \
-      --backend-store-uri sqlite:///mlflow.db \
-      --default-artifact-root ./mlartifacts \
-      --host 0.0.0.0 \
-      --port 5000
-
-  # With PostgreSQL backend (production)
-  mlflow server \
-      --backend-store-uri postgresql://user:pass@host:5432/mlflow \
-      --default-artifact-root s3://bucket/mlflow-artifacts \
-      --host 0.0.0.0 \
-      --port 5000
-  ```
-
-  ---
-
-  ## QUALITY CHECKLIST
-  - [ ] MLFLOW_TRACKING_URI is set (env var or .env, NOT hardcoded)
-  - [ ] All hyperparameters logged via typed config (not ad-hoc dict)
-  - [ ] Metrics use consistent naming convention (prefix/metric_name)
-  - [ ] Step parameter used consistently (global_step for training, epoch for eval)
-  - [ ] Model checkpoints saved as artifacts with metadata tags
+  ## Quality Checklist
+  - [ ] MLFLOW_TRACKING_URI set via env var (not hardcoded)
+  - [ ] All hyperparameters logged via typed config
+  - [ ] Metrics use consistent naming (prefix/metric_name)
+  - [ ] Step parameter used consistently
+  - [ ] Model checkpoints saved as artifacts with metadata
   - [ ] Best model registered in Model Registry
   - [ ] Dataset versioned via hash tag
-  - [ ] Git info captured automatically (commit SHA, branch, dirty status)
-  - [ ] System info (GPU, CUDA, torch version) logged as tags
-  - [ ] HPO uses Optuna with Hyperband pruner for efficient search
-  - [ ] mlflow.end_run() called (or `with` context manager used)
-  - [ ] No API keys or credentials hardcoded in source files
-  - [ ] MLflow UI accessible for team review
-
-prompt: "Set up MLflow experiment tracking for: {{ experiment_name }}"
-
+  - [ ] Git and system info captured automatically
+  - [ ] HPO uses Optuna with Hyperband pruner
+  - [ ] Context manager (`with`) used for run lifecycle
+  - [ ] No credentials hardcoded in source files
+prompt: 'Set up MLflow experiment tracking for: {{ experiment_name }}'
 activities:
-  - "message: **MLflow Tracking Agent** initializing..."
-  - "Setting up {{ tracking_scope }} for {{ experiment_name }}"
-  - "Configuring {{ framework }} integration with metric tracking"
-  - "Creating artifact management pipeline"
-  - "Setting up Optuna HPO with MLflow callback"
-  - "Configuring Model Registry lifecycle"
-  - "Building comparison and evaluation reports"
-
+- 'message: **MLflow Tracking Agent** initializing...'
+- Setting up {{ tracking_scope }} for {{ experiment_name }}
+- Configuring {{ framework }} integration with metric tracking
+- Creating artifact management pipeline
+- Setting up Optuna HPO with MLflow callback
+- Configuring Model Registry lifecycle
+- Building comparison and evaluation reports
 extensions:
-  - type: builtin
-    name: developer
-    description: "Write tracking modules, configs, and scripts"
-    timeout: 300
-    bundled: true
-
+- type: builtin
+  name: developer
+  description: Write tracking modules, configs, and scripts
+  timeout: 300
+  bundled: true
 settings:
   temperature: 0.2
   max_turns: 60

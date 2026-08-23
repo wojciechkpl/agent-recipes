@@ -29,6 +29,16 @@ jobs:
             xargs -0 -n1 python3 -m json.tool > /dev/null
           echo "all JSON files parse"
 
+  renderings:
+    name: Renderings in sync
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: install PyYAML
+        run: pip install pyyaml
+      - name: kiro/goose renderings match the Claude canonicals
+        run: python3 tools/generate_renderings.py --check
+
   tests:
     name: Contract tests
     runs-on: ubuntu-latest
