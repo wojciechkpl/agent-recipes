@@ -8,7 +8,16 @@ Each agent is a Markdown file with YAML frontmatter that defines a focused subag
 
 ### Option 0: As a plugin (single portable unit — agents + workflows)
 The `claude/` directory is a self-contained Claude Code plugin (`claude/.claude-plugin/plugin.json`)
-that bundles all **30 agents** and **16 workflow commands**. Load it directly:
+that bundles all **30 agents**, **16 workflow commands**, and the **`/wf` router**.
+
+Install from the plugin marketplace (no clone needed — the repo root's
+`.claude-plugin/marketplace.json` publishes this plugin):
+```
+/plugin marketplace add wojciechkpl/agent-recipes
+/plugin install agent-recipes@agent-recipes
+```
+
+Or load a local clone directly:
 ```bash
 claude --plugin-dir /path/to/agent-recipes/claude
 ```
@@ -124,6 +133,7 @@ the workflow defines the hand-offs and gates. Canonical catalog: `shared/workflo
 
 | Command | Purpose | Orchestrates |
 |---------|---------|--------------|
+| `/wf` | **Router** — describe the task, get handed to the right `/wf-*` below (no args → prints the routing table) | routes only; dispatches no agents itself |
 | `/wf-feature` | Implement a feature via strict TDD | `language-detection` → `architect`/`api-designer` → `test-architect` (RED) → `{lang}-expert` (GREEN) → `code-reviewer` → `documentation-agent` |
 | `/wf-bugfix` | Fix a bug, regression-test first | `debugger` → `{lang}-expert` → `code-reviewer` |
 | `/wf-pre-pr` | Pre-merge gate (any 🔴 blocks) | `static-analysis` + `code-reviewer` + `security-auditor` + `dependency-auditor` |

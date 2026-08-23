@@ -1,0 +1,20 @@
+{
+  "name": "agent-recipes",
+  "owner": {
+    "name": "wojciechkpl",
+    "url": "https://github.com/wojciechkpl"
+  },
+  "plugins": [
+    {
+      "name": "agent-recipes",
+      "source": "./claude",
+      "description": "30 specialist agents (review, debug, security, perf, language experts) + 16 evidence-gated /wf-* TDD workflows and a /wf router.",
+      "author": {
+        "name": "wojciechkpl"
+      },
+      "homepage": "https://github.com/wojciechkpl/agent-recipes",
+      "license": "MIT",
+      "keywords": ["agents", "workflows", "tdd", "code-review", "security"]
+    }
+  ]
+}

@@ -16,7 +16,10 @@
 ## Conventions
 
 - Claude command names are prefixed `wf-` so they are easy to identify and
-  uninstall, and never collide with a user's own commands.
+  uninstall, and never collide with a user's own commands. The one exception is
+  **`/wf` (Claude-only)** — a *router*, not a workflow: it classifies the task
+  against this catalog and hands off to exactly one `/wf-*` command via the
+  SlashCommand tool. It never dispatches agents itself.
 - The orchestrator (main agent) **never writes code itself** — it dispatches
   specialists via the `Agent` tool, one phase at a time, and owns the gate logic.
 - A "gate" is a stop/loop condition the orchestrator enforces between phases

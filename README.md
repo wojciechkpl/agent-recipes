@@ -92,6 +92,14 @@ immediately:
 claude --plugin-dir /path/to/agent-recipes/claude
 ```
 
+**Easiest of all — install from the plugin marketplace** (no clone, no paths; the repo
+root's `.claude-plugin/marketplace.json` publishes the `claude/` plugin). Inside Claude Code:
+
+```
+/plugin marketplace add wojciechkpl/agent-recipes
+/plugin install agent-recipes@agent-recipes
+```
+
 For manual installation of agents only:
 
 ```bash
@@ -238,6 +246,14 @@ Then just type the command in Claude Code:
 /wf-bugfix median() returns the wrong value for even-length lists
 ```
 
+**Don't want to memorize 16 commands?** Use the **`/wf` router** — describe the task and
+it routes to the right workflow (asking at most one question when two genuinely fit):
+
+```
+/wf the login endpoint 500s when the email has a trailing space   # → routes to /wf-bugfix
+/wf                                                                # no args → prints the routing table
+```
+
 ### The 16 workflows
 
 **Core dev loop**
@@ -300,6 +316,7 @@ before the next — that’s where the gates earn their keep.
 | Open ML question → reproducible, tracked setup | `/wf-ml-research` |
 | A named ML hypothesis you want to run + compare against a baseline | `/wf-experiment` |
 | Just one focused action (review / debug / refactor one thing) | the matching **agent**, no workflow |
+| **Not sure which of the above** | `/wf <task>` — the router classifies and hands off |
 
 ### Worked example: `/wf-feature`
 

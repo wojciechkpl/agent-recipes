@@ -138,7 +138,8 @@ copy_commands() {
     fi
 
     local count=0
-    for f in "$src"/wf-*.md; do
+    # wf-*.md workflows plus the wf.md router (exact name — never a user's own command)
+    for f in "$src"/wf-*.md "$src/wf.md"; do
         [[ -f "$f" ]] || continue
         if $DRY_RUN; then
             info "[dry-run] cp $f -> $dest/"
@@ -199,7 +200,7 @@ remove_commands() {
     fi
 
     local count=0
-    for f in "$dest"/wf-*.md; do
+    for f in "$dest"/wf-*.md "$dest/wf.md"; do
         [[ -f "$f" ]] || continue
         if $DRY_RUN; then
             info "[dry-run] rm $f"

@@ -1,7 +1,7 @@
 {
   "name": "agent-recipes",
   "description": "Specialist agents (review, debug, security, perf, language experts) plus multi-step TDD/review/perf workflows for Claude Code.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "author": {
     "name": "wojciechkpl"
   },

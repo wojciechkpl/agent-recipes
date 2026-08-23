@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  shellcheck:
+    name: ShellCheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: shellcheck all shell scripts
+        run: |
+          shellcheck --version
+          # warning+ fails the build; info-level style notes (e.g. SC2059 for
+          # the color-escape printf pattern in setup.sh) do not.
+          shellcheck --severity=warning setup.sh claude/autonomous-mode.sh claude/hooks/guard.sh tests/*.sh
+
+  validate-json:
+    name: Validate JSON manifests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: parse every committed JSON file
+        run: |
+          find . -name '*.json' -not -path './.git/*' -print0 |
+            xargs -0 -n1 python3 -m json.tool > /dev/null
+          echo "all JSON files parse"
+
+  tests:
+    name: Contract tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: setup.sh command installation contract
+        run: tests/test_setup_commands.sh
+      - name: autonomous mode + guard hook
+        run: tests/test_autonomous_mode.sh

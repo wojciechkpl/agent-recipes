@@ -37,6 +37,7 @@ printf 'my own command\n' > .claude/commands/my-own.md
 
 check "wf-feature.md installed" exists .claude/commands/wf-feature.md
 check "wf-bugfix.md installed"  exists .claude/commands/wf-bugfix.md
+check "wf.md router installed"  exists .claude/commands/wf.md
 check "agents still installed"  exists .claude/agents/code-reviewer.md
 check "test-architect installed" exists .claude/agents/test-architect.md
 check "architect installed"      exists .claude/agents/architect.md
@@ -64,6 +65,7 @@ check "full workflow set present (phase 5)" test "$src_count" -ge 15
 
 check "wf-feature.md removed"   notexists .claude/commands/wf-feature.md
 check "wf-bugfix.md removed"    notexists .claude/commands/wf-bugfix.md
+check "wf.md router removed"    notexists .claude/commands/wf.md
 check "user command preserved"  exists    .claude/commands/my-own.md
 
 # ── Plugin packaging: claude/ is a valid plugin bundling agents + commands ─────
