@@ -81,16 +81,16 @@ claude agents
 ### Core Agents
 | Agent | Model | Tools | Memory | Description |
 |-------|-------|-------|--------|-------------|
-| `code-reviewer` | Sonnet | Read-only | Project | Code review for quality, security, performance |
+| `code-reviewer` | Opus | Read-only | Project | Code review for quality, security, performance |
 | `test-architect` | Sonnet | All | Project | TDD RED phase — writes failing tests as an independent test author |
-| `architect` | Sonnet | All | Project | System design docs + ordered implementation plans (no code) |
-| `product-manager` | Sonnet | All | Project | PRDs, user stories, acceptance criteria, prioritization (RICE/MoSCoW), success metrics |
-| `debugger` | Inherit | All | Project | Scientific debugging: observe → hypothesize → test → fix |
-| `security-auditor` | Sonnet | Read + Bash | Project | OWASP Top 10, secret detection, CVE scanning |
-| `performance-optimizer` | Inherit | All | Project | Measure → analyze → optimize → validate |
-| `documentation-agent` | Inherit | All | — | API docs, READMEs, architecture diagrams, changelogs |
+| `architect` | Opus | All | Project | System design docs + ordered implementation plans (no code) |
+| `product-manager` | Opus | All | Project | PRDs, user stories, acceptance criteria, prioritization (RICE/MoSCoW), success metrics |
+| `debugger` | Opus | All | Project | Scientific debugging: observe → hypothesize → test → fix |
+| `security-auditor` | Opus | Read + Bash | Project | OWASP Top 10, secret detection, CVE scanning |
+| `performance-optimizer` | Opus | All | Project | Measure → analyze → optimize → validate |
+| `documentation-agent` | Opus | All | — | API docs, READMEs, architecture diagrams, changelogs |
 | `api-designer` | Sonnet | All | — | REST/GraphQL/gRPC design with OpenAPI generation |
-| `dependency-auditor` | Haiku | Read + Bash | — | Vulnerability, license, unused, size analysis |
+| `dependency-auditor` | Opus | Read + Bash | — | Vulnerability, license, unused, size analysis |
 | `project-bootstrapper` | Sonnet | All | — | Scaffold new projects with TDD, CI/CD, Docker |
 | `analyst` | Sonnet | Read-only | Project | Read-only codebase investigator — structure, data flow, risks |
 | `data-engineer` | Sonnet | All | User | Data transforms/pipelines, Polars/Rust-first, schema validation |

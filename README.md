@@ -1,17 +1,52 @@
 # AI Agent Recipes
 
-A curated collection of AI agent configurations, **built first for [Claude Code](https://code.claude.com) (by Anthropic)** and also available for Kiro (AWS) and Goose (Block). Each agent enforces best practices, TDD, and language-specific conventions.
+[![CI](https://github.com/wojciechkpl/agent-recipes/actions/workflows/ci.yml/badge.svg)](https://github.com/wojciechkpl/agent-recipes/actions/workflows/ci.yml)
+![Agents](https://img.shields.io/badge/agents-30-blue)
+![Workflows](https://img.shields.io/badge/workflows-16_+_%2Fwf_router-blueviolet)
+![Platforms](https://img.shields.io/badge/platforms-Claude_Code_·_Kiro_·_Goose-informational)
+![License](https://img.shields.io/badge/license-MIT-green)
 
-> **Claude Code is the primary, recommended platform.** It's the only one with the full **workflow layer** — 16 `/wf-*` orchestration commands that sequence the agents with gates — plus the one-command **plugin** install and the §1–§9 conventions. Kiro (JSON) and Goose (YAML) share the same core agents and standards; only the format differs.
+**30 specialist agents + 16 evidence-gated `/wf-*` workflows for
+[Claude Code](https://code.claude.com)** — TDD with a real test-author/implementer split,
+review and security gates that only advance on checked results, and an optional
+autonomous mode with a tested safety guard. The same agents ship as
+[Kiro](kiro/) (JSON) and [Goose](goose/) (YAML) renderings.
 
-👉 **Jump to [Claude Code setup](#claude-code-anthropic--primary).**
+**Install in 10 seconds** (inside Claude Code — no clone needed):
+
+```
+/plugin marketplace add wojciechkpl/agent-recipes
+/plugin install agent-recipes@agent-recipes
+```
+
+Then describe a task (`Review the auth module for security issues`) or run a workflow
+(`/wf-feature add a rate limiter` — or just `/wf <task>` and let the router pick).
+
+> **Claude Code is the primary, recommended platform.** It's the only one with the full
+> **workflow layer** — 16 `/wf-*` orchestration commands that sequence the agents with
+> gates — plus the one-command **plugin** install and the §1–§9 conventions. Kiro (JSON)
+> and Goose (YAML) share the same core agents and standards; only the format differs.
+
+**Contents:**
+[Quick Start](#quick-start) ·
+[Agent Catalog](#agent-catalog) ·
+[Workflows](#workflows-claude-code) ·
+[Autonomous Mode](#autonomous-mode-optional) ·
+[Tutorials](#tutorials) ·
+[Enforced Practices](#enforced-practices) ·
+[Platform Comparison](#format-comparison) ·
+[Contributing](#contributing)
 
 ## Repository Structure
 
 ```
 .
 ├── setup.sh                # One-line setup for new machines
+├── .claude-plugin/         # marketplace.json — install claude/ as a plugin, no clone needed
+├── .github/workflows/      # CI — shellcheck, JSON validation, contract tests
+├── docs/                   # Tutorials and design docs
 ├── shared/                 # Cross-platform standards
+│   ├── workflows.md            # Canonical workflow catalog (sequences + gates)
 │   ├── severity-scale.md       # Shared 🔴🟠🟡🔵ℹ️ severity classification
 │   └── naming-conventions.md   # Shared naming standards
 │
@@ -19,7 +54,7 @@ A curated collection of AI agent configurations, **built first for [Claude Code]
 │   ├── README.md               # Claude-specific documentation
 │   ├── CONVENTIONS.md          # Global rules for all Claude agents (§1–§9)
 │   ├── .claude-plugin/         # plugin.json — load all agents + workflows in one command
-│   ├── commands/               # workflow slash commands (/wf-*) + /autonomous-mode + /review-app-feedback
+│   ├── commands/               # /wf router + workflow slash commands (/wf-*) + /autonomous-mode + /review-app-feedback
 │   ├── autonomous-mode.sh      # optional broad-permission toggle (+ settings.autonomous.json)
 │   ├── hooks/guard.sh          # PreToolUse hook entrypoint — fast pre-filter
 │   ├── hooks/guard.py          # the guard's decision logic (called by guard.sh)
@@ -225,6 +260,20 @@ several agents into a multi-step pipeline with **gates** between phases — the 
 hold the expertise, the workflow defines the hand-offs and the stop conditions. Think
 of an agent as a specialist and a workflow as the lead engineer who sequences them and
 refuses to move on until each step actually passes.
+
+`/wf-feature`'s pipeline, for example — every arrow is a gate the orchestrator enforces
+on **checked evidence**, never on an agent's claim:
+
+```mermaid
+flowchart LR
+    DETECT["DETECT<br/>language-detection"] --> DESIGN["DESIGN (optional)<br/>architect / api-designer"]
+    DESIGN --> RED["RED<br/>test-architect<br/>writes failing tests"]
+    RED -->|"tests fail for<br/>the right reason"| GREEN["GREEN<br/>{lang}-expert<br/>may not touch tests"]
+    GREEN -->|"suite green"| REVIEW["REVIEW<br/>code-reviewer"]
+    REVIEW -->|"🔴/🟠 REQUEST CHANGES"| GREEN
+    REVIEW -->|"APPROVE"| DOCS["DOCS<br/>documentation-agent"]
+    DOCS --> REPORT["REPORT<br/>diff + tests + verdict"]
+```
 
 > Workflows are **first-class on Claude Code** (the `/wf-*` slash commands below).
 > Goose has recipe renderings of all 15 under `goose/general/workflows/` (run with
@@ -533,223 +582,13 @@ merge/backup internals, the complete allow/deny lists, and safety notes.
 
 ---
 
-## Tutorial
+## Tutorials
 
-### 1. Review Code Before a PR
-
-**Goose:**
-```bash
-goose run --recipe goose/general/code-reviewer.yaml \
-  --params target_path="src/" review_depth="deep" focus_areas="all"
-```
-
-**Claude Code:**
-```
-> Use the code-reviewer agent to review src/ with deep focus on all areas
-```
-
-Both produce a structured report:
-```
-# Code Review: src/
-## Verdict: REQUEST CHANGES
-## Critical Issues (🔴)
-  src/auth/handler.py:45 — SQL injection via string interpolation
-## Major Issues (🟠)
-  src/api/users.py:23 — N+1 query in user list endpoint
-## Suggestions (🔵)
-  src/models/user.py:12 — Consider using dataclass instead of dict
-```
-
-### 2. Debug a Failing Test
-
-**Goose:**
-```bash
-goose run --recipe goose/general/debugger.yaml \
-  --params symptom="test_user_auth fails with 401" bug_type="logic_error"
-```
-
-**Claude Code:**
-```
-> Debug why test_user_auth fails with a 401 error
-```
-
-The debugger follows a scientific method:
-1. **OBSERVE** — Reproduce the failure, read error output
-2. **HYPOTHESIZE** — Rank likely causes (expired token? wrong endpoint? missing header?)
-3. **TEST** — Isolate and test each hypothesis
-4. **FIX** — Write regression test FIRST (RED), then apply minimal fix (GREEN)
-5. **VERIFY** — Run full test suite, confirm no regressions
-
-### 3. Bootstrap a New Project
-
-**Goose:**
-```bash
-goose run --recipe goose/general/project-bootstrapper.yaml \
-  --params project_name="my-api" language="python" project_type="api_service"
-```
-
-**Claude Code:**
-```
-> Use the project-bootstrapper agent to create a Python API service called "my-api"
-```
-
-Creates a production-ready scaffold:
-```
-my-api/
-├── src/my_api/
-│   ├── api/v1/routes/
-│   ├── services/
-│   ├── models/
-│   └── schemas/
-├── tests/
-├── pyproject.toml          # ruff + mypy strict
-├── Dockerfile              # Multi-stage, non-root
-├── docker-compose.yaml
-├── .github/workflows/ci.yml
-├── Makefile
-└── .pre-commit-config.yaml
-```
-
-### 4. Security Audit Before Release
-
-**Goose:**
-```bash
-goose run --recipe goose/general/security-auditor.yaml \
-  --params audit_scope="full" compliance_framework="owasp"
-```
-
-**Claude Code:**
-```
-> Run a full OWASP security audit on this project
-```
-
-Produces:
-```
-# Security Audit Report
-## Risk Score: 6.2/10
-## Critical (🔴): 2 findings
-  - Hardcoded AWS key in src/config.py:12
-  - SQL injection in src/api/search.py:34
-## High (🟠): 3 findings
-  - Missing rate limiting on /api/auth/login
-  - Session tokens not rotated after password change
-  - Debug mode enabled in production config
-```
-
-### 5. ML Research Workflow
-
-**Goose:**
-```bash
-goose run --recipe goose/general/ai-researcher.yaml \
-  --params research_topic="contrastive learning for recommendations" \
-          research_type="literature_review" scope="focused"
-```
-
-**Claude Code:**
-```
-> Use the ai-researcher agent to survey contrastive learning for recommendation systems
-```
-
-Delivers:
-1. PRISMA-style literature review with arXiv search
-2. Citation graph analysis (PageRank, influence flow)
-3. 3-5 solution candidates with architecture diagrams
-4. Weighted tradeoff decision matrix
-5. Mathematical formulation with gradient computation
-6. Docker-based experiment setup with MLflow tracking
-
-### 6. Design a REST API
-
-**Goose:**
-```bash
-goose run --recipe goose/general/api-designer.yaml \
-  --params api_name="user-service" api_style="rest" api_maturity="production"
-```
-
-**Claude Code:**
-```
-> Use the api-designer agent to design a production REST API for the user service
-```
-
-Produces: domain model (Mermaid ER), endpoint specs, OpenAPI 3.1 schema, RFC 7807 error format, cursor-based pagination, auth patterns, and contract-first TDD plan.
-
-### 7. UX Design with Accessibility
-
-**Goose:**
-```bash
-goose run --recipe goose/general/ux-designer.yaml \
-  --params task_type="full_ux_process" platform="mobile" wcag_level="AA"
-```
-
-**Claude Code:**
-```
-> Use the ux-designer agent for a full UX process on the mobile onboarding flow, targeting WCAG AA
-```
-
-Delivers: user personas, journey maps (Mermaid), information architecture, ASCII wireframes for all 7 screen states, design tokens as CSS/Dart code, WCAG 2.2 AA audit, responsive breakpoints, and TDD test plan.
-
-### 8. Use Language Experts
-
-**Goose:**
-```bash
-# Refactor Python code
-goose run --recipe goose/general/languages/python-expert.yaml \
-  --params target_path="src/services/" task="refactor"
-
-# Optimize PostgreSQL queries
-goose run --recipe goose/general/languages/postgresql-expert.yaml \
-  --params target_path="migrations/" task="optimize_queries"
-```
-
-**Claude Code:**
-```
-> Have the python-expert agent refactor src/services/
-> Use the postgresql-expert to optimize the slow queries in our migrations
-```
-
-### 9. Chain Multiple Agents
-
-**Goose** (sequential recipe execution):
-```bash
-# Design → Implement → Review → Document
-goose run --recipe goose/general/api-designer.yaml \
-  --params api_name="orders" api_style="rest"
-
-goose run --recipe goose/general/languages/python-expert.yaml \
-  --params task="implement" target_path="src/api/orders/"
-
-goose run --recipe goose/general/code-reviewer.yaml \
-  --params target_path="src/api/orders/" review_depth="deep"
-
-goose run --recipe goose/general/documentation-agent.yaml \
-  --params target_path="src/api/orders/" doc_type="api_reference"
-```
-
-**Claude Code** (agents chain automatically via conversation):
-```
-> Design a REST API for the orders service, then implement it in Python,
-  review the code, and generate API documentation
-```
-
-### 10. Goose: Coding Agent Context (Multi-Step Missions)
-
-For complex workflows that need persistent state, sub-agent dispatch, and Docker execution:
-
-```bash
-# Architecture design for a new feature
-goose run --recipe goose/coding_agent_context/recipes/mission_architecture_design.yaml \
-  --params feature="user-recommendations"
-
-# TDD implementation (reads the design doc from previous step)
-goose run --recipe goose/coding_agent_context/recipes/mission_tdd.yaml \
-  --params feature="user-recommendations"
-
-# Code review
-goose run --recipe goose/coding_agent_context/recipes/mission_review_code_change.yaml \
-  --params feature="user-recommendations"
-```
-
-See [goose/coding_agent_context/MISSION_INDEX.md](goose/coding_agent_context/MISSION_INDEX.md) for the full mission selection guide.
+Ten step-by-step walkthroughs — code review, debugging a failing test, bootstrapping
+a project, security audit, ML research, API design, accessible UX, language experts,
+chaining agents, and Goose multi-step missions — live in
+**[docs/TUTORIAL.md](docs/TUTORIAL.md)**, each with the Goose command and the
+Claude Code prompt side by side.
 
 ---
 
