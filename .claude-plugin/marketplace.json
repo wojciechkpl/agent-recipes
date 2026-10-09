@@ -4,17 +4,26 @@
     "name": "wojciechkpl",
     "url": "https://github.com/wojciechkpl"
   },
+  "metadata": {
+    "description": "Specialist agents, evidence-gated TDD/review/perf workflows, a safety guard, Signal notifications and cross-device state sync for Claude Code."
+  },
   "plugins": [
     {
       "name": "agent-recipes",
       "source": "./claude",
-      "description": "30 specialist agents (review, debug, security, perf, language experts) + 16 evidence-gated /wf-* TDD workflows and a /wf router.",
+      "description": "Specialist agents (review, debug, security, perf, language experts), evidence-gated /wf-* TDD workflows with a /wf router, a safety guard, Signal notifications and cross-device state sync.",
       "author": {
         "name": "wojciechkpl"
       },
       "homepage": "https://github.com/wojciechkpl/agent-recipes",
       "license": "MIT",
-      "keywords": ["agents", "workflows", "tdd", "code-review", "security"]
+      "keywords": [
+        "agents",
+        "workflows",
+        "tdd",
+        "code-review",
+        "security"
+      ]
     }
   ]
 }

@@ -39,6 +39,19 @@ jobs:
       - name: kiro/goose renderings match the Claude canonicals
         run: python3 tools/generate_renderings.py --check
 
+  manifests:
+    name: Manifests in sync
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: counts, descriptions, plugin-root references, skill frontmatter
+        run: python3 tools/check_manifests.py
+      - name: plugin version bumped when claude/ changed (pull requests)
+        if: github.event_name == 'pull_request'
+        run: python3 tools/check_manifests.py --base "origin/${{ github.base_ref }}"
+
   tests:
     name: Contract tests
     runs-on: ubuntu-latest
@@ -54,3 +67,5 @@ jobs:
         run: tests/test_notify.sh
       - name: cross-device state sync
         run: tests/test_state_sync.sh
+      - name: manifest drift checker
+        run: tests/test_check_manifests.sh
