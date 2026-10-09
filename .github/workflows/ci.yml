@@ -16,7 +16,7 @@ jobs:
           shellcheck --version
           # warning+ fails the build; info-level style notes (e.g. SC2059 for
           # the color-escape printf pattern in setup.sh) do not.
-          shellcheck --severity=warning setup.sh claude/autonomous-mode.sh claude/hooks/guard.sh claude/scripts/state-sync.sh tests/*.sh
+          shellcheck --severity=warning setup.sh claude/autonomous-mode.sh claude/hooks/guard.sh claude/scripts/state-sync.sh claude/scripts/state-items.sh tests/*.sh
 
   validate-json:
     name: Validate JSON manifests
@@ -71,3 +71,5 @@ jobs:
         run: tests/test_check_manifests.sh
       - name: guard secret-read rules (Track F verdict table)
         run: tests/test_guard_secrets.sh
+      - name: state store setup (setup.sh --state)
+        run: tests/test_setup_state.sh

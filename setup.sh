@@ -35,16 +35,27 @@ Options:
   --claude            Install Claude Code agents (user-level)
   --claude-project    Install Claude Code agents (project-level, into .claude/)
   --goose             Configure Goose recipe path in shell profile
-  --all               Install everything (Claude user-level + Goose)
+  --all               Install everything (Claude user-level + Goose + state sync)
+  --state             Set up the state store: one private git repo holding agent
+                      memory and instructions for Claude Code, Goose, Hermes and
+                      Codex. On a terminal it asks where the store lives, which
+                      remote syncs it and which tools to include; otherwise it
+                      uses the defaults (~/.agent-state, local-only, detected tools)
+  --state-dir <path>      Store location (default ~/.agent-state)
+  --state-remote <url>    Private git remote; empty = this machine only
+  --state-tools <list>    Tools to include, e.g. "claude goose" (default: detected)
+  --no-state          Skip the state store (with --all)
   --dry-run           Show what would be done without making changes
-  --uninstall         Remove installed agents and configuration
+  --uninstall         Remove installed agents, configuration and the state links
+                      (the store itself is kept)
   -h, --help          Show this help
 
 Examples:
-  ./setup.sh --all              # Full setup for both platforms
+  ./setup.sh --all              # Full setup for both platforms + state store
   ./setup.sh --claude           # Claude agents only (available in all projects)
   ./setup.sh --claude-project   # Claude agents for current project only
   ./setup.sh --goose            # Goose recipe path only
+  ./setup.sh --state            # State store only (asks where, on a terminal)
   ./setup.sh --uninstall        # Remove everything
 
 EOF
@@ -54,8 +65,15 @@ EOF
 INSTALL_CLAUDE=false
 INSTALL_CLAUDE_PROJECT=false
 INSTALL_GOOSE=false
+INSTALL_STATE=false
+NO_STATE=false
+STATE_DIR_OPT=""
+STATE_REMOTE_OPT=""
+STATE_TOOLS_OPT=""
 DRY_RUN=false
 UNINSTALL=false
+STATE_SYNC="${SCRIPT_DIR}/claude/scripts/state-sync.sh"
+STATE_CONF="${XDG_CONFIG_HOME:-$HOME/.config}/agent-recipes/state.conf"
 
 # ── Parse args ────────────────────────────────────────────────
 if [[ $# -eq 0 ]]; then
@@ -63,12 +81,19 @@ if [[ $# -eq 0 ]]; then
     exit 0
 fi
 
+need_value() { [[ $# -ge 2 && "$2" != --* ]] || { err "$1 needs a value"; exit 1; }; }
+
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --claude)          INSTALL_CLAUDE=true ;;
         --claude-project)  INSTALL_CLAUDE_PROJECT=true ;;
         --goose)           INSTALL_GOOSE=true ;;
-        --all)             INSTALL_CLAUDE=true; INSTALL_GOOSE=true ;;
+        --all)             INSTALL_CLAUDE=true; INSTALL_GOOSE=true; INSTALL_STATE=true ;;
+        --state)           INSTALL_STATE=true ;;
+        --state-dir)       need_value "$@"; STATE_DIR_OPT="$2"; shift ;;
+        --state-remote)    need_value "$@"; STATE_REMOTE_OPT="$2"; shift ;;
+        --state-tools)     need_value "$@"; STATE_TOOLS_OPT="$2"; shift ;;
+        --no-state)        NO_STATE=true ;;
         --dry-run)         DRY_RUN=true ;;
         --uninstall)       UNINSTALL=true ;;
         -h|--help)         usage; exit 0 ;;
@@ -76,6 +101,7 @@ while [[ $# -gt 0 ]]; do
     esac
     shift
 done
+if $NO_STATE; then INSTALL_STATE=false; fi
 
 # ── Helpers ───────────────────────────────────────────────────
 copy_agents() {
@@ -382,10 +408,86 @@ remove_goose_config() {
     ok "Removed Goose config from $profile"
 }
 
+# ── State store (agent memory + instructions, all tools) ──────
+# "Interactive" = stdin is a terminal. AGENT_RECIPES_ASSUME_TTY=1 is a test hook that
+# lets a test pipe the answers in; it is not documented for users.
+state_interactive() { [[ -t 0 || "${AGENT_RECIPES_ASSUME_TTY:-}" == 1 ]]; }
+
+# ask <prompt> <default>: one line from the user, Enter (or EOF) keeps the default.
+ask() {
+    local answer=""
+    printf "%s" "$1" >&2
+    read -r answer || true
+    echo "${answer:-$2}"
+}
+
+# yes_no <prompt> <y|n>: y/n with a default.
+yes_no() {
+    local answer
+    answer="$(ask "$1" "$2")"
+    case "$answer" in [Yy]*) echo y ;; *) echo n ;; esac
+}
+
+setup_state() {
+    local detected dir remote tools auto t
+    detected="$("$STATE_SYNC" detect)"
+    dir="${STATE_DIR_OPT:-${HOME}/.agent-state}"
+    remote="$STATE_REMOTE_OPT"
+    tools="${STATE_TOOLS_OPT:-$detected}"
+    auto=yes
+    if state_interactive; then
+        printf "\n${BOLD}State store${RESET} — one private git repo for agent memory and instructions.\n" >&2
+        printf "Detected tools: %s\n\n" "$detected" >&2
+        [[ -n "$STATE_DIR_OPT" ]]    || dir="$(ask "Where should agent memory and instructions live? [$dir] " "$dir")"
+        [[ -n "$STATE_REMOTE_OPT" ]] || remote="$(ask "Private git remote to sync it (Enter = this machine only): " "")"
+        if [[ -z "$STATE_TOOLS_OPT" ]]; then
+            tools=claude
+            for t in $detected; do
+                [[ "$t" == claude ]] && continue
+                [[ "$(yes_no "Include $t? [Y/n] " y)" == y ]] && tools="$tools $t"
+            done
+        fi
+        [[ "$(yes_no "Also sync Claude's per-project auto memory (~/.claude/projects/*/memory)? [Y/n] " y)" == y ]] || auto=no
+        printf "\n" >&2
+    fi
+
+    if $DRY_RUN; then
+        info "[dry-run] would write $STATE_CONF:"
+        printf '  STATE_DIR=%s\n  STATE_REMOTE=%s\n  STATE_TOOLS="%s"\n  STATE_CLAUDE_AUTO_MEMORY=%s\n' \
+            "$dir" "$remote" "$tools" "$auto"
+        info "[dry-run] would link into $dir:"
+        STATE_DIR="$dir" STATE_TOOLS="$tools" STATE_CLAUDE_AUTO_MEMORY="$auto" "$STATE_SYNC" items
+        return 0
+    fi
+    "$STATE_SYNC" config dir="$dir" remote="$remote" tools="$tools" auto_memory="$auto"
+    ok "Wrote $STATE_CONF"
+    "$STATE_SYNC" init
+    ok "State store ready at $dir (tools: $tools)"
+}
+
+# remove_state: links back to plain copies, state.conf removed, the store kept.
+remove_state() {
+    local store
+    store="$("$STATE_SYNC" config 2>/dev/null | sed -n 's/^STATE_DIR="\(.*\)"$/\1/p')"
+    store="${store:-${HOME}/.agent-state}"
+    if [[ ! -f "$STATE_CONF" && ! -d "$store/.git" && ! -d "${HOME}/.claude-state/.git" ]]; then
+        return 0
+    fi
+    if $DRY_RUN; then
+        info "[dry-run] state-sync.sh off (links -> plain copies; the store is kept)"
+        info "[dry-run] rm $STATE_CONF"
+        return 0
+    fi
+    "$STATE_SYNC" off
+    rm -f "$STATE_CONF"
+    ok "State links restored to plain copies; removed $STATE_CONF (the store itself is kept)"
+}
+
 # ── Uninstall ─────────────────────────────────────────────────
 if $UNINSTALL; then
     printf "\n${BOLD}Uninstalling agent recipes...${RESET}\n\n"
 
+    remove_state
     remove_agents "${HOME}/.claude/agents"
     remove_agents ".claude/agents"
     remove_commands "${HOME}/.claude/commands"
@@ -431,6 +533,12 @@ if $INSTALL_GOOSE; then
     printf "\n"
 fi
 
+if $INSTALL_STATE; then
+    info "Setting up the state store (agent memory + instructions)"
+    setup_state
+    printf "\n"
+fi
+
 # ── Summary ───────────────────────────────────────────────────
 printf "${GREEN}${BOLD}Setup complete!${RESET}\n\n"
 
@@ -442,4 +550,9 @@ fi
 if $INSTALL_GOOSE; then
     printf "  ${BOLD}Goose:${RESET} Run recipes with:\n"
     printf "  ${CYAN}goose run --recipe goose/general/code-reviewer.yaml${RESET}\n\n"
+fi
+
+if $INSTALL_STATE && ! $DRY_RUN; then
+    printf "  ${BOLD}State store:${RESET} ${CYAN}claude/scripts/state-sync.sh status${RESET} shows what is linked;\n"
+    printf "  run ${CYAN}./setup.sh --state${RESET} on every other device with the same remote.\n\n"
 fi
