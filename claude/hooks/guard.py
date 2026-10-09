@@ -34,6 +34,7 @@ Modes (environment variable GUARD_MODE, set by guard.sh; default "always"):
 import json
 import os
 import re
+import shlex
 import sys
 
 PROMPTING_MODES = ("default", "plan")
@@ -43,9 +44,9 @@ SOFT = False  # set in main(): True = ask the user instead of blocking
 KEY = re.compile(
     r"(id_rsa|id_ed25519|id_ecdsa|id_dsa"
     r"|\.pem\b|\.ppk\b|\.p12\b|\.pfx\b"
-    r"|(^|[\s/='\"])\.ssh/"
+    r"|(^|[\s/='\"])\.ssh(?![\w-])"      # ~/.ssh/… and ~/.ssh itself (tar, cp -r)
     r"|\.aws/credentials"
-    r"|(^|[\s/='\"])\.gnupg/)",
+    r"|(^|[\s/='\"])\.gnupg(?![\w-]))",
     re.IGNORECASE,
 )
 ENV = re.compile(r"(^|[\s/='\"])\.env(\.[\w.]+)?\b", re.IGNORECASE)
@@ -57,6 +58,106 @@ READER = re.compile(
     r"grep|egrep|fgrep|rg|ag|sed|awk|cut|tee|"
     r"cp|scp|rsync|curl|wget|nc|ncat|ssh|dd|open)\b"
 )
+
+# ── per-word secret rule ───────────────────────────────────────────────────────
+# The READER rule above needs a known reader verb. Anything else that names a
+# secret file (jq, sort, tar, git diff, a python one-liner, `< .env`) is blocked
+# too, unless the command only touches the file's metadata or writes to it.
+# Decided per shell WORD, so `.env.example` exempts only itself, never a sibling
+# `.env` in the same command.
+SAFE_CMDS = frozenset((
+    "ls", "stat", "test", "[", "touch", "mkdir", "chmod", "chown", "rm",
+    "echo", "printf", "source", ".",
+))
+SAFE_GIT_SUBCMDS = frozenset(("add", "commit", "status", "check-ignore", "rm", "mv"))
+DEST_ONLY_CMDS = frozenset(("cp", "mv", "ln"))   # a secret word only as the destination
+SHELL_WORDS = frozenset((           # not commands: skipped when looking for one
+    "do", "done", "then", "else", "elif", "fi", "{", "}", "(", ")", "!",
+    "time", "exec", "nohup", "command", "builtin",
+))
+ASSIGNMENT = re.compile(r"^[A-Za-z_]\w*=")
+# A token that can be a file argument: no whitespace, no shell or jq/sed operators.
+# `'.env // {} | keys'` (a jq filter) and `s|.env|PROD|g` (a sed script) are not.
+PATHLIKE = re.compile(r"^[^\s|;&<>()'\"`]+$")
+# A secret named as a string literal INSIDE a program (`python3 -c "...('.env')..."`).
+QUOTED = re.compile(r"""['"]([^'"\s]+)['"]""")
+
+
+def _secret_token(text):
+    return bool(KEY.search(text) or (ENV.search(text) and not EXAMPLE.search(text)))
+
+
+def secret_word(word):
+    if PATHLIKE.match(word):
+        return _secret_token(word)
+    return any(_secret_token(literal) for literal in QUOTED.findall(word))
+
+
+def _tokens(cmd):
+    """Quote-aware shell tokens; operators (`;`, `|`, `&&`, `<`, `(`, …) come out as
+    their own tokens, quoted strings as one token without the quotes."""
+    lexer = shlex.shlex(cmd, posix=True, punctuation_chars=True)
+    lexer.whitespace_split = True
+    lexer.commenters = ""           # a `# .env.example` comment must not hide `.env`
+    try:
+        return list(lexer)
+    except ValueError:               # unbalanced quotes: fall back to plain words
+        return cmd.split()
+
+
+def _is_operator(token):
+    return token and all(ch in ";|&()`$" for ch in token)
+
+
+def _segments(cmd):
+    """Token lists between command separators (`;`, `|`, `&&`, `(`, `$(`, backticks)."""
+    segment, out = [], []
+    for token in _tokens(cmd):
+        if _is_operator(token) or token.startswith("<("):
+            out.append(segment)
+            segment = []
+        else:
+            segment.append(token)
+    out.append(segment)
+    return out
+
+
+def _command_of(words):
+    """(command, subcommand) of a segment: skips env assignments and shell keywords."""
+    rest = [w for w in words if not ASSIGNMENT.match(w)]
+    while rest and rest[0] in SHELL_WORDS:
+        rest = rest[1:]
+    if not rest:
+        return "", ""
+    cmd = rest[0].rsplit("/", 1)[-1]
+    sub = next((w for w in rest[1:] if not w.startswith("-")), "")
+    return cmd, sub
+
+
+def _segment_reads_secret(words):
+    """The secret word this segment reads, or None when it only names one safely."""
+    secrets = [w for w in words if secret_word(w)]
+    if not secrets:
+        return None
+    for i, w in enumerate(words):                      # `< .env` and `<.env`
+        if w == "<" and i + 1 < len(words) and secret_word(words[i + 1]):
+            return words[i + 1]
+        if w.startswith("<") and secret_word(w[1:]):
+            return w[1:]
+    cmd, sub = _command_of(words)
+    if cmd in SAFE_CMDS or (cmd == "git" and sub in SAFE_GIT_SUBCMDS):
+        return None
+    if cmd in DEST_ONLY_CMDS and secrets == [words[-1]]:
+        return None
+    return secrets[0]
+
+
+def reads_secret_word(cmd):
+    for words in _segments(cmd):
+        word = _segment_reads_secret(words)
+        if word:
+            return word
+    return None
 
 
 def block(reason):
@@ -107,9 +208,14 @@ def check_bash(cmd):
     if re.search(r":\s*\(\s*\)\s*\{\s*:\s*\|\s*:", cmd):
         block("fork bomb pattern")
 
-    # secret read / exfiltration
+    # secret read / exfiltration — a known reader verb anywhere in the command…
     if READER.search(cmd) and touches_secret(cmd):
         block("reading or copying a secret / private-key file")
+    # …or any other command that names a secret file, decided per shell word
+    word = reads_secret_word(cmd)
+    if word:
+        block("reading a secret / private-key file (%s) — only metadata or write "
+              "operations on it are allowed" % word)
 
     # remote code execution: a real download (has a URL) piped into an interpreter.
     # Requiring a scheme/host avoids flagging a mere mention of "curl|bash" in text

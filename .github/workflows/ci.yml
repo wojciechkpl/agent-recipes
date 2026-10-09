@@ -69,3 +69,5 @@ jobs:
         run: tests/test_state_sync.sh
       - name: manifest drift checker
         run: tests/test_check_manifests.sh
+      - name: guard secret-read rules (Track F verdict table)
+        run: tests/test_guard_secrets.sh

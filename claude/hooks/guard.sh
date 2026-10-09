@@ -78,7 +78,7 @@ fi
 # ('su''do' is split so this file does not trip a guard scanning its own source.)
 TRIGGERS='id_rsa|id_ed25519|id_ecdsa|id_dsa'      # KEY: private keys
 TRIGGERS="$TRIGGERS"'|\.pem|\.ppk|\.p12|\.pfx'    # KEY: cert/key bundles
-TRIGGERS="$TRIGGERS"'|\.ssh/|\.gnupg/'            # KEY: credential dirs
+TRIGGERS="$TRIGGERS"'|\.ssh|\.gnupg'              # KEY: credential dirs, with or without a trailing slash
 TRIGGERS="$TRIGGERS"'|\.aws/credentials'          # KEY: cloud creds
 TRIGGERS="$TRIGGERS"'|\.env'                      # ENV: dotenv files
 TRIGGERS="$TRIGGERS"'|su''do'                     # privilege escalation
