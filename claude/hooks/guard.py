@@ -44,12 +44,14 @@ SOFT = False  # set in main(): True = ask the user instead of blocking
 KEY = re.compile(
     r"(id_rsa|id_ed25519|id_ecdsa|id_dsa"
     r"|\.pem\b|\.ppk\b|\.p12\b|\.pfx\b"
-    r"|(^|[\s/='\"])\.ssh(?![\w-])"      # ~/.ssh/… and ~/.ssh itself (tar, cp -r)
+    r"|(?<![\w|])\.ssh(?![\w-])"         # ~/.ssh/… and ~/.ssh itself (tar, cp -r)
     r"|\.aws/credentials"
-    r"|(^|[\s/='\"])\.gnupg(?![\w-]))",
+    r"|(?<![\w|])\.gnupg(?![\w-]))",
     re.IGNORECASE,
 )
-ENV = re.compile(r"(^|[\s/='\"])\.env(\.[\w.]+)?\b", re.IGNORECASE)
+# `(?<![\w|])`: any prefix but a word character (`foo.env`) or a pipe — `s|.env|x|`
+# is a stream-editor script. `@.env` (curl), `$'.env'`, `HEAD:.env` all count.
+ENV = re.compile(r"(?<![\w|])\.env(\.[\w.]+)?\b", re.IGNORECASE)
 EXAMPLE = re.compile(r"\.(example|sample|template|dist)\b", re.IGNORECASE)
 
 # commands that read/copy/exfiltrate file contents
@@ -66,13 +68,16 @@ READER = re.compile(
 # Decided per shell WORD, so `.env.example` exempts only itself, never a sibling
 # `.env` in the same command.
 SAFE_CMDS = frozenset((
-    "ls", "stat", "test", "[", "touch", "mkdir", "chmod", "chown", "rm",
-    "echo", "printf", "source", ".",
+    "ls", "stat", "test", "[", "[[", "touch", "mkdir", "chmod", "chown", "rm", "find",
+    "echo", "printf", "source", ".", "export", "unset", "declare", "local", "readonly",
+    "cd", "basename", "dirname", "realpath", "readlink", "file", "du", "true", "false", ":",
 ))
-SAFE_GIT_SUBCMDS = frozenset(("add", "commit", "status", "check-ignore", "rm", "mv"))
-DEST_ONLY_CMDS = frozenset(("cp", "mv", "ln"))   # a secret word only as the destination
+SAFE_GIT_SUBCMDS = frozenset(("add", "commit", "status", "check-ignore", "rm", "mv",
+                              "log", "ls-files"))
+DEST_ONLY_CMDS = frozenset(("cp", "mv", "ln"))   # fine when the DESTINATION is the secret
 SHELL_WORDS = frozenset((           # not commands: skipped when looking for one
-    "do", "done", "then", "else", "elif", "fi", "{", "}", "(", ")", "!",
+    "if", "then", "else", "elif", "fi", "while", "until", "for", "in", "do", "done",
+    "case", "esac", "select", "function", "{", "}", "(", ")", "!",
     "time", "exec", "nohup", "command", "builtin",
 ))
 ASSIGNMENT = re.compile(r"^[A-Za-z_]\w*=")
@@ -81,32 +86,62 @@ ASSIGNMENT = re.compile(r"^[A-Za-z_]\w*=")
 PATHLIKE = re.compile(r"^[^\s|;&<>()'\"`]+$")
 # A secret named as a string literal INSIDE a program (`python3 -c "...('.env')..."`).
 QUOTED = re.compile(r"""['"]([^'"\s]+)['"]""")
+SUBSTITUTION = re.compile(r"\$\([^()]*\)|`[^`]*`")   # `"$(pwd)/.env"` -> `/.env`
+MAX_DEPTH = 3                        # nested $( … ) / -c '…' / eval '…' recursion
 
 
 def _secret_token(text):
     return bool(KEY.search(text) or (ENV.search(text) and not EXAMPLE.search(text)))
 
 
-def secret_word(word):
+def secret_word(word, depth=0):
+    """Does this token READ a secret file? A plain path names it; a quoted literal
+    inside a program string, a path left after stripping `$(…)`, or a nested command
+    (`"$(< .env)"`, `-c 'sort .env'`) count too. `F=.env` only names it."""
+    if ASSIGNMENT.match(word):
+        word = word.split("=", 1)[1]
+        if PATHLIKE.match(word):
+            return False
     if PATHLIKE.match(word):
         return _secret_token(word)
-    return any(_secret_token(literal) for literal in QUOTED.findall(word))
+    if any(_secret_token(literal) for literal in QUOTED.findall(word)):
+        return True
+    stripped = SUBSTITUTION.sub("", word)
+    return bool(PATHLIKE.match(stripped) and _secret_token(stripped))
+
+
+def _nested_read(word, depth):
+    """A command inside this token that reads a secret: `"$(< .env)"`, `-c 'sort .env'`,
+    `eval '…'`. It is a read whatever the outer command is, `echo` included."""
+    if depth >= MAX_DEPTH or PATHLIKE.match(word):
+        return None
+    if ASSIGNMENT.match(word):
+        word = word.split("=", 1)[1]
+    return reads_secret_word(word, depth + 1)
 
 
 def _tokens(cmd):
     """Quote-aware shell tokens; operators (`;`, `|`, `&&`, `<`, `(`, …) come out as
-    their own tokens, quoted strings as one token without the quotes."""
-    lexer = shlex.shlex(cmd, posix=True, punctuation_chars=True)
+    their own tokens, quoted strings as one token without the quotes. Backticks are
+    command boundaries; a lone `$` is glued to what follows (`$HOME/x`, `$(`, `$'.env'`)."""
+    lexer = shlex.shlex(cmd.replace("`", " ; "), posix=True, punctuation_chars=True)
     lexer.whitespace_split = True
     lexer.commenters = ""           # a `# .env.example` comment must not hide `.env`
     try:
-        return list(lexer)
+        raw = list(lexer)
     except ValueError:               # unbalanced quotes: fall back to plain words
-        return cmd.split()
+        raw = cmd.split()
+    tokens = []
+    for token in raw:
+        if tokens and tokens[-1] == "$":
+            tokens[-1] += token
+        else:
+            tokens.append(token)
+    return tokens
 
 
 def _is_operator(token):
-    return token and all(ch in ";|&()`$" for ch in token)
+    return bool(token) and all(ch in ";|&()$" for ch in token)
 
 
 def _segments(cmd):
@@ -134,27 +169,43 @@ def _command_of(words):
     return cmd, sub
 
 
-def _segment_reads_secret(words):
+def _argument_secrets(words, depth):
+    """Secret words in argument position: not the command itself (a jq filter or a
+    stream-editor script starts with `.env`) and not an OUTPUT redirection target."""
+    cmd_word = next((w for w in words if not ASSIGNMENT.match(w) and w not in SHELL_WORDS), None)
+    out, prev = [], ""
+    for w in words:
+        if w is not cmd_word and not prev.startswith(">") and secret_word(w, depth):
+            out.append(w)
+        prev = w
+    return out
+
+
+def _segment_reads_secret(words, depth):
     """The secret word this segment reads, or None when it only names one safely."""
-    secrets = [w for w in words if secret_word(w)]
+    for i, w in enumerate(words):                      # `< .env` and `<.env`
+        if w == "<" and i + 1 < len(words) and secret_word(words[i + 1], depth):
+            return words[i + 1]
+        if w.startswith("<") and len(w) > 1 and secret_word(w[1:], depth):
+            return w[1:]
+    for w in words:                                    # `echo "$(< .env)"`, `bash -c '…'`
+        nested = _nested_read(w, depth)
+        if nested:
+            return nested
+    secrets = _argument_secrets(words, depth)
     if not secrets:
         return None
-    for i, w in enumerate(words):                      # `< .env` and `<.env`
-        if w == "<" and i + 1 < len(words) and secret_word(words[i + 1]):
-            return words[i + 1]
-        if w.startswith("<") and secret_word(w[1:]):
-            return w[1:]
     cmd, sub = _command_of(words)
     if cmd in SAFE_CMDS or (cmd == "git" and sub in SAFE_GIT_SUBCMDS):
         return None
-    if cmd in DEST_ONLY_CMDS and secrets == [words[-1]]:
+    if cmd in DEST_ONLY_CMDS and secret_word(words[-1], depth):
         return None
     return secrets[0]
 
 
-def reads_secret_word(cmd):
+def reads_secret_word(cmd, depth=0):
     for words in _segments(cmd):
-        word = _segment_reads_secret(words)
+        word = _segment_reads_secret(words, depth)
         if word:
             return word
     return None
@@ -273,21 +324,31 @@ def main():
         payload = json.loads(sys.stdin.read())
     except Exception:
         sys.exit(0)  # fail open — never wedge a session on bad input
+    if not isinstance(payload, dict):
+        sys.exit(0)  # not a hook payload: same contract, without a traceback
 
     global SOFT
     SOFT = (os.environ.get("GUARD_MODE", "always") == "auto"
             and payload.get("permission_mode") in PROMPTING_MODES)
 
     tool = payload.get("tool_name", "")
-    ti = payload.get("tool_input", {}) or {}
+    ti = payload.get("tool_input")
+    if not isinstance(ti, dict):
+        ti = {}
 
-    if tool == "Read":
-        if touches_secret(str(ti.get("file_path", ""))):
-            block("attempt to read a secret / private-key file")
-        sys.exit(0)
-
-    if tool == "Bash":
-        check_bash(str(ti.get("command", "")))
+    try:
+        if tool == "Read":
+            if touches_secret(str(ti.get("file_path", ""))):
+                block("attempt to read a secret / private-key file")
+        elif tool == "Bash":
+            check_bash(str(ti.get("command", "")))
+    except SystemExit:
+        raise
+    except Exception as exc:
+        # A crash inside a RULE is not bad input: a traceback would exit 1, which
+        # Claude Code treats as a non-blocking error, i.e. a silent allow. Fail closed.
+        block("guard rule crashed (%s: %s) — report this; the command was not run"
+              % (type(exc).__name__, exc))
 
     sys.exit(0)
 

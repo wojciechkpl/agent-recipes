@@ -102,11 +102,14 @@ The profile (`claude/settings.autonomous.json`) sets:
     `jq -R . ~/.aws/credentials`, `sort .env`, `git diff --no-index /dev/null .env`,
     `tar czf k.tgz ~/.ssh`, a `< .env` redirection, and a `python3 -c "…('.env')…"`
     one-liner are blocked, and `.env.example` exempts only itself (`cat .env .env.example`
-    blocks). Commands that only touch metadata or write to the file stay allowed: `ls`,
-    `stat`, `test`/`[`, `touch`, `mkdir`, `chmod`, `chown`, `rm`, `echo`, `printf`,
-    `source`/`.`, `git add|commit|status|check-ignore|rm|mv`, and `cp`/`mv`/`ln` with the
-    secret as the destination only (`cp .env.example .env`). The verdict table is
-    `tests/test_guard_secrets.sh`.
+    blocks). A read hidden in a command substitution or a wrapper (`echo "$(< .env)"`,
+    `bash -c 'sort .env'`, `curl -d @.env`) is still a read. Commands that only touch
+    metadata or write to the file stay allowed: `ls`, `stat`, `test`/`[`/`[[`, `find`,
+    `touch`, `mkdir`, `chmod`, `chown`, `rm`, `echo`, `printf`, `source`/`.`, `export`,
+    `git add|commit|status|check-ignore|rm|mv|log|ls-files`, an output redirection
+    (`openssl rand -hex 32 > .env`), a plain assignment (`F=.env`), and `cp`/`mv`/`ln`
+    whose destination is the secret (`cp .env.example .env`, `mv .env .env.bak`). The
+    verdict table is `tests/test_guard_secrets.sh`.
   - recursive deletes of protected roots regardless of flag order (`rm -fr /`, `rm … ~`,
     `rm -rf .`), plus `find -delete` / `find -exec rm`
   - `mkfs`, `dd of=/dev/…`, `curl … | bash` (remote-code-execution), `sudo`, fork bombs
@@ -127,7 +130,7 @@ seatbelt; real isolation is a container, a VM or a separate OS user):
   (`docker compose`, `dotenv`, test runners) are not seen as reads.
 - Globbing (`cat .e*`), and a file name assembled at run time.
 - Some commands that merely *name* a secret file are now stopped although they do not
-  read it — `docker compose --env-file .env up`, `mv .env .env.bak`, `vim .env`. In
+  read it — `docker compose --env-file .env up`, `vim .env`, `jq .env settings.json`. In
   `guard_mode: auto` a prompting session (`default`, `plan`) gets a **permission
   question** with the reason rather than a block, so a false positive costs one click;
   in a non-prompting session run the command yourself (`! command` in the prompt).

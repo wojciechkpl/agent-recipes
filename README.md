@@ -589,7 +589,7 @@ clobbering the backup or duplicating the hook.
 ```bash
 tests/test_autonomous_mode.sh               # 100 checks: guard block/allow, guard.sh≡guard.py, on→resync→off round-trip
 tests/test_plugin_guard.sh                  # 47 checks: hooks.json wiring, guard_mode auto|always|off, --plugin toggle
-tests/test_guard_secrets.sh                 # 51 checks: the secret-read verdict table (what must block / stay allowed)
+tests/test_guard_secrets.sh                 # 105 checks: the secret-read verdict table (what must block / stay allowed)
 ```
 
 Edit `claude/hooks/guard.py` to change what's blocked, then re-run that test.
@@ -606,7 +606,7 @@ will be silently skipped. The test suite checks the two agree.
   Work around it by writing such content to a file first (`git commit -F msg.txt`) rather
   than inlining it.
 - **The guard stopped a command that only *names* `.env`** (`docker compose --env-file
-  .env up`, `mv .env .env.bak`). Any command that is not on the guard's metadata/write
+  .env up`, `vim .env`). Any command that is not on the guard's metadata/write
   list is treated as a reader of a secret file. In `guard_mode: auto` a prompting session
   gets a permission question instead of a block; otherwise run it yourself
   (`! command`). The list of known limits is in `claude/AUTONOMOUS-MODE.md`.
