@@ -22,10 +22,22 @@ Contract (Claude Code PreToolUse hook):
 
 Fails OPEN (exit 0) on unexpected input so it can never wedge a session.
 `git push --force-with-lease` is intentionally allowed (it is the safe form).
+
+Modes (environment variable GUARD_MODE, set by guard.sh; default "always"):
+  always  every violation blocks (exit 2)
+  auto    a violation blocks when the session runs commands without asking; in a
+          prompting permission mode (default, plan) it returns
+          permissionDecision "ask" instead, so the user decides and nothing that
+          an allow-list would have waved through runs silently. A payload with no
+          permission_mode blocks (fail safe).
 """
 import json
+import os
 import re
 import sys
+
+PROMPTING_MODES = ("default", "plan")
+SOFT = False  # set in main(): True = ask the user instead of blocking
 
 # ── secret / private-key path tokens ──────────────────────────────────────────
 KEY = re.compile(
@@ -48,6 +60,13 @@ READER = re.compile(
 
 
 def block(reason):
+    if SOFT:
+        json.dump({"hookSpecificOutput": {
+            "hookEventName": "PreToolUse",
+            "permissionDecision": "ask",
+            "permissionDecisionReason": "agent-recipes guard: " + reason,
+        }}, sys.stdout)
+        sys.exit(0)
     sys.stderr.write("BLOCKED by autonomous-mode guard: " + reason + "\n")
     sys.exit(2)
 
@@ -148,6 +167,10 @@ def main():
         payload = json.loads(sys.stdin.read())
     except Exception:
         sys.exit(0)  # fail open — never wedge a session on bad input
+
+    global SOFT
+    SOFT = (os.environ.get("GUARD_MODE", "always") == "auto"
+            and payload.get("permission_mode") in PROMPTING_MODES)
 
     tool = payload.get("tool_name", "")
     ti = payload.get("tool_input", {}) or {}

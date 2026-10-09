@@ -38,6 +38,30 @@
 #
 # GUARD_TRACE=1 prints which path was taken (fastpath|delegated) to stderr — tests only.
 # GUARD_PY overrides the guard.py location — tests only.
+#
+# MODES
+# Two installs call this script:
+#   * settings.json (autonomous-mode.sh on, by absolute path) passes NO argument
+#     -> always enforce. This is the pre-plugin contract and must never weaken.
+#   * the plugin's hooks/hooks.json passes the argument `plugin`
+#     -> the mode comes from the plugin option guard_mode (auto|always|off).
+#        Claude Code exports a configured option as CLAUDE_PLUGIN_OPTION_GUARD_MODE and
+#        exports NOTHING for an option the user never set, so the default lives here.
+#   auto   = block when the session runs commands without asking (acceptEdits, auto,
+#            dontAsk, bypassPermissions); ask the user in prompting modes (default, plan)
+#   always = block in every session        off = never block
+# guard.py applies auto; it reads GUARD_MODE from the environment (default: always).
+
+GUARD_MODE=always
+if [ "${1:-}" = plugin ]; then
+    GUARD_MODE=${CLAUDE_PLUGIN_OPTION_GUARD_MODE:-auto}
+fi
+case "$GUARD_MODE" in
+    off) exec cat >/dev/null ;;   # drain stdin so the caller never sees EPIPE; exits 0
+    auto|always) ;;
+    *) GUARD_MODE=always ;;   # unknown value: fail safe
+esac
+export GUARD_MODE
 
 HERE=$(dirname "$0")
 : "${GUARD_PY:=$HERE/guard.py}"

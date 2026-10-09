@@ -204,7 +204,7 @@ remove_skills() {
             if $DRY_RUN; then
                 info "[dry-run] rm -rf $dest/$name"
             else
-                rm -rf "$dest/$name"
+                rm -rf "${dest:?}/${name:?}"
             fi
             count=$((count + 1))
         fi

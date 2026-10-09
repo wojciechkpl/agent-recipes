@@ -1,7 +1,7 @@
 {
   "name": "agent-recipes",
-  "description": "Specialist agents (review, debug, security, perf, language experts) plus multi-step TDD/review/perf workflows for Claude Code.",
-  "version": "0.4.0",
+  "description": "Specialist agents plus multi-step TDD/review/perf workflows for Claude Code, with a safety guard, Signal notifications and cross-device state sync.",
+  "version": "0.5.0",
   "author": {
     "name": "wojciechkpl"
   },
@@ -13,5 +13,13 @@
     "tdd",
     "code-review",
     "security"
-  ]
+  ],
+  "userConfig": {
+    "guard_mode": {
+      "type": "string",
+      "title": "Safety guard mode",
+      "description": "auto = block when the session runs commands without asking (acceptEdits, auto, dontAsk, bypassPermissions) and ask you in sessions that prompt; always = block in every session; off = never check.",
+      "default": "auto"
+    }
+  }
 }
