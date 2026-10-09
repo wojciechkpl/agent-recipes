@@ -1,4 +1,5 @@
 ---
+name: static-analysis
 description: "Runs language-appropriate static analysis tools (linter, formatter, type checker) and reports findings. Referenced by code-reviewer and language experts."
 allowed-tools: Read, Bash, Grep, Glob
 ---

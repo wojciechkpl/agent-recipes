@@ -1,4 +1,5 @@
 ---
+name: docker-ml-environment
 description: "Sets up containerized ML development environments with GPU support, MLflow tracking, multi-stage builds. Use for ML project infrastructure."
 allowed-tools: Read, Write, Edit, Bash, Grep, Glob
 ---

@@ -1,4 +1,5 @@
 ---
+name: language-detection
 description: "Auto-detects the project's programming language(s), framework(s), package manager, test runner, and toolchain. Referenced by most agents for context adaptation."
 allowed-tools: Read, Grep, Glob, Bash
 ---

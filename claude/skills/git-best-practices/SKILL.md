@@ -1,4 +1,5 @@
 ---
+name: git-best-practices
 description: "Enforces git workflow best practices: conventional commits, branching strategy, PR hygiene, and pre-commit validation."
 allowed-tools: Read, Bash, Grep, Glob
 ---

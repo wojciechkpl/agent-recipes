@@ -1,4 +1,5 @@
 ---
+name: mlflow-tracking
 description: "Integrates MLflow for ML experiment tracking, model registry, hyperparameter optimization. Use for ML projects needing reproducible experiments."
 allowed-tools: Read, Write, Edit, Bash, Grep, Glob
 ---
