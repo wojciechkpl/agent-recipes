@@ -9,9 +9,10 @@
 
 **22 specialist agents + 7 skills + 15 evidence-gated `/wf-*` workflows for
 [Claude Code](https://code.claude.com)** — TDD with a real test-author/implementer split,
-review and security gates that only advance on checked results, and an optional
-autonomous mode with a tested safety guard. The same agents ship as
-[Kiro](kiro/) (JSON) and [Goose](goose/) (YAML) renderings.
+review and security gates that only advance on checked results, a tested safety guard
+that ships with the plugin, and optional Signal notifications and cross-device sync of
+agent memory. The same agents ship as [Kiro](kiro/) (JSON) and [Goose](goose/) (YAML)
+renderings.
 
 **Install in 10 seconds** (inside Claude Code — no clone needed):
 
@@ -23,6 +24,11 @@ autonomous mode with a tested safety guard. The same agents ship as
 Then describe a task (`Review the auth module for security issues`) or run a workflow
 (`/wf-feature add a rate limiter` — or just `/wf <task>` and let the router pick).
 
+The plugin also runs the **safety guard** on every `Bash`/`Read` call (no setup), and can
+send a **Signal message** when a session needs you or has finished, and **sync agent
+memory and your user `CLAUDE.md` between devices** — both opt-in. Setup:
+[docs/TUTORIAL-notifications-sync.md](docs/TUTORIAL-notifications-sync.md).
+
 > **Claude Code is the primary, recommended platform.** It's the only one with the full
 > **workflow layer** — 15 `/wf-*` orchestration commands that sequence the agents with
 > gates — plus the one-command **plugin** install and the §1–§9 conventions. Kiro (JSON)
@@ -33,6 +39,8 @@ Then describe a task (`Review the auth module for security issues`) or run a wor
 [Agent Catalog](#agent-catalog) ·
 [Workflows](#workflows-claude-code) ·
 [Autonomous Mode](#autonomous-mode-optional) ·
+[Notifications](#notifications) ·
+[Sync across devices](#sync-across-devices) ·
 [Tutorials](#tutorials) ·
 [Enforced Practices](#enforced-practices) ·
 [Platform Comparison](#format-comparison) ·
@@ -46,7 +54,7 @@ Then describe a task (`Review the auth module for security issues`) or run a wor
 ├── .claude-plugin/         # marketplace.json — install claude/ as a plugin, no clone needed
 ├── .github/workflows/      # CI — shellcheck, JSON validation, contract tests
 ├── docs/                   # Tutorials and design docs
-├── tools/                  # generate_renderings.py — Kiro/Goose renderings from claude/
+├── tools/                  # generate_renderings.py (Kiro/Goose renderings), check_manifests.py (count/version drift)
 ├── shared/                 # Cross-platform standards
 │   ├── workflows.md            # Canonical workflow catalog (sequences + gates)
 │   ├── severity-scale.md       # Shared 🔴🟠🟡🔵ℹ️ severity classification
@@ -56,10 +64,13 @@ Then describe a task (`Review the auth module for security issues`) or run a wor
 │   ├── README.md               # Claude-specific documentation
 │   ├── CONVENTIONS.md          # Global rules for all Claude agents (§1–§9)
 │   ├── .claude-plugin/         # plugin.json — load all agents + workflows in one command
-│   ├── commands/               # /wf router + workflow slash commands (/wf-*) + /autonomous-mode + /review-app-feedback
+│   ├── commands/               # /wf router + /wf-* workflows + /autonomous-mode + /notify-test + /sync-state + /review-app-feedback
 │   ├── autonomous-mode.sh      # optional broad-permission toggle (+ settings.autonomous.json)
-│   ├── hooks/guard.sh          # PreToolUse hook entrypoint — fast pre-filter
+│   ├── hooks/hooks.json        # plugin hooks: guard (PreToolUse), notifier, state sync
+│   ├── hooks/guard.sh          # PreToolUse hook entrypoint — fast pre-filter; guard_mode auto|always|off
 │   ├── hooks/guard.py          # the guard's decision logic (called by guard.sh)
+│   ├── hooks/notify.py         # optional Signal notifications via a local signal-cli daemon
+│   ├── scripts/state-sync.sh   # optional sync of agent-memory/ + user CLAUDE.md through a private git repo
 │   ├── AUTONOMOUS-MODE.md       # how to use autonomous mode (on/off, scopes, safety)
 │   ├── skills/*/SKILL.md       # 7 shared skills — invoked inline via the Skill tool
 │   └── agents/
@@ -472,8 +483,12 @@ a `PreToolUse` guard hook** block catastrophic and secret-exfil operations.
 ### Prerequisites
 
 - `python3` on your `PATH` (used by the toggle and the guard hook).
-- This repo stays where you cloned it — the guard hook is wired in by **absolute path**.
-  If you move the repo, re-run `on` to refresh it.
+- **Plugin install:** nothing else — the guard runs from the plugin's own `hooks/hooks.json`,
+  and `/autonomous-mode on` merges the permissions only (option `guard_mode`:
+  `auto` | `always` | `off`, see [`claude/AUTONOMOUS-MODE.md`](claude/AUTONOMOUS-MODE.md)).
+- **Clone install** (`claude/autonomous-mode.sh on` from a checkout): this repo stays
+  where you cloned it — the guard hook is wired in by **absolute path**. If you move the
+  repo, re-run `on` to refresh it.
 
 ### 1. Enable it
 
@@ -518,7 +533,7 @@ Just want it for one session with no files? Launch with a flag instead:
 
 ```bash
 claude --permission-mode acceptEdits        # auto-accept edits
-claude --dangerously-skip-permissions       # skip ALL prompts (strongest, riskiest — bypasses the guard too)
+claude --dangerously-skip-permissions       # skip ALL prompts (strongest, riskiest — the guard hook still blocks, nothing else does)
 ```
 
 ### 2. Verify it's on
@@ -526,9 +541,12 @@ claude --dangerously-skip-permissions       # skip ALL prompts (strongest, riski
 ```bash
 claude/autonomous-mode.sh status            # 🟢 Autonomous mode is ON (global: …/settings.json)
 
-# Confirm the guard hook is wired into the live settings:
+# Clone install — confirm the guard hook is wired into the live settings:
 python3 -c "import json,os; d=json.load(open(os.path.expanduser('~/.claude/settings.json'))); h=d['hooks']['PreToolUse'][0]['hooks'][0]['command']; print('guard:', h)"
 ```
+
+Plugin install: `/autonomous-mode status` prints the guard source and the configured
+`guard_mode` (`🛡  Guard: agent-recipes plugin hook, guard_mode=auto (default)`).
 
 ### 3. What it changes
 
@@ -569,7 +587,9 @@ clobbering the backup or duplicating the hook.
 ### 5. Test / tune the guard
 
 ```bash
-tests/test_autonomous_mode.sh               # 51 assertions: guard block/allow, guard.sh≡guard.py, on→resync→off round-trip
+tests/test_autonomous_mode.sh               # 100 checks: guard block/allow, guard.sh≡guard.py, on→resync→off round-trip
+tests/test_plugin_guard.sh                  # 47 checks: hooks.json wiring, guard_mode auto|always|off, --plugin toggle
+tests/test_guard_secrets.sh                 # 51 checks: the secret-read verdict table (what must block / stay allowed)
 ```
 
 Edit `claude/hooks/guard.py` to change what's blocked, then re-run that test.
@@ -585,11 +605,42 @@ will be silently skipped. The test suite checks the two agree.
   sees the command string and can't tell a literal inside a heredoc from a real invocation.
   Work around it by writing such content to a file first (`git commit -F msg.txt`) rather
   than inlining it.
-- **Moved the repo?** Re-run `claude/autonomous-mode.sh on` so the hook's absolute path
-  updates.
+- **The guard stopped a command that only *names* `.env`** (`docker compose --env-file
+  .env up`, `mv .env .env.bak`). Any command that is not on the guard's metadata/write
+  list is treated as a reader of a secret file. In `guard_mode: auto` a prompting session
+  gets a permission question instead of a block; otherwise run it yourself
+  (`! command`). The list of known limits is in `claude/AUTONOMOUS-MODE.md`.
+- **Moved the repo?** (clone installs only) Re-run `claude/autonomous-mode.sh on` so the
+  hook's absolute path updates. Plugin installs are unaffected.
+- **Uninstalling the plugin?** Run `/autonomous-mode off` first — otherwise the broad
+  permissions stay while the guard goes.
 
 **Full reference:** [`claude/AUTONOMOUS-MODE.md`](claude/AUTONOMOUS-MODE.md) — scopes,
 merge/backup internals, the complete allow/deny lists, and safety notes.
+
+---
+
+## Notifications
+
+Optional: a **Signal message on your phone** when Claude Code is waiting for you
+(permission prompt, question, idle) or has finished a turn longer than two minutes —
+in interactive sessions and in headless `claude -p` runs alike. The plugin sends one
+JSON-RPC call to a local **signal-cli** daemon; nothing leaves Signal's end-to-end
+encryption, nothing is sent until you set `notify_enabled`, and the assistant's text is
+never included unless you opt in. Test with `/notify-test`. Setup in
+**[docs/TUTORIAL-notifications-sync.md §3](docs/TUTORIAL-notifications-sync.md#3-signal-notifications)**.
+
+---
+
+## Sync across devices
+
+Optional: the memory of the agents that keep **user-level memory** (`ai-researcher` and
+the language experts) and your **user `CLAUDE.md`** follow you between machines through a
+**private git repository** (`~/.claude-state`). A session start pulls, a session end
+pushes; Markdown merges keep both devices' lines; files that look like secrets are never
+committed. Settings, credentials, plugins and transcripts are never synced.
+`/sync-state init <git-url>` on each device, `/sync-state status` to check. Setup in
+**[docs/TUTORIAL-notifications-sync.md §4](docs/TUTORIAL-notifications-sync.md#4-sync-across-devices)**.
 
 ---
 
@@ -599,7 +650,9 @@ Ten step-by-step walkthroughs — code review, debugging a failing test, bootstr
 a project, security audit, ML research, API design, accessible UX, language experts,
 chaining agents, and Goose multi-step missions — live in
 **[docs/TUTORIAL.md](docs/TUTORIAL.md)**, each with the Goose command and the
-Claude Code prompt side by side.
+Claude Code prompt side by side. The guard, Signal notifications, cross-device sync,
+Remote Control from a phone and using the skills from Hermes are in
+**[docs/TUTORIAL-notifications-sync.md](docs/TUTORIAL-notifications-sync.md)**.
 
 ---
 

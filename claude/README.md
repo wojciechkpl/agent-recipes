@@ -25,6 +25,11 @@ Everything (agents + `/wf-*` commands) is available with no copying. This is the
 recommended way to get the agents *and* the workflows together. The copy-based
 options below install agents only; use `setup.sh` to also install the workflow commands.
 
+The plugin also carries `hooks/hooks.json`: the **safety guard** on every `Bash`/`Read`
+call (option `guard_mode`, default `auto`), and — opt-in — **Signal notifications**
+(`/notify-test`) and **cross-device sync** of agent memory and your user `CLAUDE.md`
+(`/sync-state`). Setup: [`../docs/TUTORIAL-notifications-sync.md`](../docs/TUTORIAL-notifications-sync.md).
+
 ### Option 1: Project-Level (recommended for teams)
 ```bash
 # From your project root
@@ -188,6 +193,9 @@ claude/autonomous-mode.sh status [--project]
 ```
 
 Also available as the `/autonomous-mode` slash command (`on|off|status [--project]`).
+In a plugin install the command merges the permissions only — the guard is the plugin's
+own hook (`guard_mode` option) and keeps working across plugin updates. Turn autonomous
+mode **off before** uninstalling the plugin.
 
 - Merges `claude/settings.autonomous.json` (`defaultMode: acceptEdits` + a broad
   dev-toolchain allow-list + a safety deny-list + a **`PreToolUse` guard hook**) into the
@@ -207,6 +215,19 @@ Also available as the `/autonomous-mode` slash command (`on|off|status [--projec
 **Full guide:** [`AUTONOMOUS-MODE.md`](AUTONOMOUS-MODE.md) — global vs per-project, the
 three ways to enable, what's allowed/denied, how the merge+backup works, safety, and
 troubleshooting.
+
+## Notifications and sync (optional, plugin)
+
+| Command | Does |
+|---------|------|
+| `/notify-test` | Sends a test Signal message through the local signal-cli daemon with your current options; reports `OK  sent` or `FAIL <why>` |
+| `/sync-state init <git-url>` · `status` · `pull` · `push` · `off` | Keeps `~/.claude/agent-memory/` and `~/.claude/CLAUDE.md` in a private git repo that every device pulls at session start and pushes at session end |
+
+Both are off until configured. Options (`/plugin configure agent-recipes@agent-recipes`):
+`guard_mode`, `notify_enabled`, `notify_recipient`, `notify_signal_rpc_url`,
+`notify_min_seconds`, `notify_include_summary`, `notify_allow_remote`,
+`notify_signal_account`. Full setup, the security model and troubleshooting:
+[`../docs/TUTORIAL-notifications-sync.md`](../docs/TUTORIAL-notifications-sync.md).
 
 ## Conventions
 
