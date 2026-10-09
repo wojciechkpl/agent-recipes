@@ -139,8 +139,17 @@ def git(root, *args):
                           text=True, check=True).stdout
 
 
+VERSION = re.compile(r"^\s*(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?\s*$")
+
+
 def version_tuple(text):
-    return tuple(int(part) for part in text.strip().split("."))
+    """Comparable form of a semver string; a pre-release sorts below its release
+    (0.5.0-rc1 < 0.5.0) and above the previous one (0.5.0-rc1 > 0.4.0)."""
+    match = VERSION.match(text)
+    if not match:
+        raise ValueError("not a semver version: %r" % text)
+    major, minor, patch, pre = match.groups()
+    return (int(major), int(minor), int(patch), pre is None, pre or "")
 
 
 def check_version_bump(root, base, problems):

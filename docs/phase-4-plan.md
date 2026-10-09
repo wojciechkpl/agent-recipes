@@ -32,6 +32,16 @@
 > - **Probe:** fact 5's `default` check reads whatever `defaultMode` the user's own
 >   settings set (`auto` on the implementing machine); pass `--permission-mode
 >   default` when re-running it.
+> - **Post-implementation review** (independent agent, red-phase tests by a third)
+>   found and the branch fixed: two guard bypass classes (reads hidden in `$(…)` /
+>   backticks / `bash -c`, and `@.env` / `$'.env'` / `HEAD:.env` prefixes), everyday
+>   false positives (`if [ -f .env ]`, output redirections, `F=.env`, `mv .env
+>   .env.bak`, `find`, `git log`), a crash-to-allow on non-object payloads, a
+>   dangling-symlink data loss in `state-sync.sh init` for dotfiles users, the
+>   `off → edit → init` overwrite, an age-blind rebase abort, and a pre-release
+>   version crash in `check_manifests.py`. Left as a decision for the user:
+>   `git add .env` is on the guard's safe list (the sketch put it there), so
+>   `git add -f .env && git push` ships a secret through the guard.
 >
 > **§8 on a real machine:** V4 done (all suites under macOS `/bin/bash` 3.2.57).
 > V1 (interactive `Notification` hook), V2 (a live Signal account), V3 (agent memory

@@ -303,5 +303,26 @@ g commit -qam "docs only"
 run_mc --root "$gfx" --base base
 check "only README.md changed since base, no bump -> clean" clean
 
+# Pre-release versions must compare, not crash: "0.5.0-rc1" is above "0.4.0" (a
+# bump) but below "0.5.0" (not a bump).
+g checkout -q base
+g checkout -q -b prerelease
+jedit "$gfx/claude/.claude-plugin/plugin.json" 'd["version"]="0.4.0"'
+g commit -q --allow-empty -am "base at 0.4.0"
+g tag base040
+jedit "$gfx/claude/.claude-plugin/plugin.json" 'd["version"]="0.5.0-rc1"'
+printf '\nrc change\n' >> "$gfx/claude/agents/architect.md"
+g commit -qam "0.5.0-rc1"
+run_mc --root "$gfx" --base base040
+check "claude/ changed, 0.4.0 -> 0.5.0-rc1 -> clean (pre-release is a bump, no traceback)" clean
+jedit "$gfx/claude/.claude-plugin/plugin.json" 'd["version"]="0.5.0"'
+g commit -qam "0.5.0"
+g tag base050
+jedit "$gfx/claude/.claude-plugin/plugin.json" 'd["version"]="0.5.0-rc1"'
+printf '\nrc again\n' >> "$gfx/claude/agents/architect.md"
+g commit -qam "back to 0.5.0-rc1"
+run_mc --root "$gfx" --base base050
+check "claude/ changed, 0.5.0 -> 0.5.0-rc1 -> 1 problem (pre-release is below the release)" problems 1 "version"
+
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
 [[ "$fail" -eq 0 ]]
