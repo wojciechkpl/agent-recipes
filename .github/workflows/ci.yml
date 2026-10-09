@@ -50,3 +50,5 @@ jobs:
         run: tests/test_autonomous_mode.sh
       - name: plugin-native guard (hooks.json, guard_mode, --plugin toggle)
         run: tests/test_plugin_guard.sh
+      - name: Signal notifier
+        run: tests/test_notify.sh

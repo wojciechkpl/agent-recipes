@@ -20,6 +20,47 @@
       "title": "Safety guard mode",
       "description": "auto = block when the session runs commands without asking (acceptEdits, auto, dontAsk, bypassPermissions) and ask you in sessions that prompt; always = block in every session; off = never check.",
       "default": "auto"
+    },
+    "notify_enabled": {
+      "type": "boolean",
+      "title": "Signal notifications",
+      "description": "Send a Signal message when Claude is waiting on you or finishes a long turn. Needs a local signal-cli daemon.",
+      "default": false
+    },
+    "notify_recipient": {
+      "type": "string",
+      "title": "Notify this Signal number",
+      "description": "Number or username to notify, usually your own (e.g. +15551234567). Empty = Note to Self, which does not buzz your phone."
+    },
+    "notify_signal_account": {
+      "type": "string",
+      "title": "Signal account of the daemon",
+      "description": "Only needed when the signal-cli daemon serves more than one account."
+    },
+    "notify_signal_rpc_url": {
+      "type": "string",
+      "title": "signal-cli JSON-RPC URL",
+      "description": "HTTP endpoint of the signal-cli daemon.",
+      "default": "http://127.0.0.1:18080/api/v1/rpc"
+    },
+    "notify_min_seconds": {
+      "type": "number",
+      "title": "Minimum turn length (seconds)",
+      "description": "Only send a 'finished' message for turns at least this long.",
+      "default": 120,
+      "min": 0
+    },
+    "notify_include_summary": {
+      "type": "boolean",
+      "title": "Include a summary",
+      "description": "Append the first 200 characters of Claude's last message. Off by default because it may contain sensitive text.",
+      "default": false
+    },
+    "notify_allow_remote": {
+      "type": "boolean",
+      "title": "Allow a non-local daemon",
+      "description": "Permit an RPC URL that is not on this machine, such as a daemon on another device over a private network.",
+      "default": false
     }
   }
 }

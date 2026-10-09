@@ -1,5 +1,5 @@
 {
-  "description": "agent-recipes: safety guard",
+  "description": "agent-recipes: safety guard, Signal notifications",
   "hooks": {
     "PreToolUse": [
       {
@@ -13,6 +13,51 @@
               "plugin"
             ],
             "timeout": 10
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/hooks/notify.py",
+              "mark"
+            ],
+            "async": true
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/hooks/notify.py",
+              "stop"
+            ],
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/hooks/notify.py",
+              "notification"
+            ],
+            "async": true
           }
         ]
       }
