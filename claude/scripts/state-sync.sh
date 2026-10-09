@@ -1,40 +1,62 @@
 #!/usr/bin/env bash
-# state-sync.sh — keep Claude Code *user* state in a private git repo so it follows
-# you across devices. OPTIONAL and reversible; does nothing until `init` is run.
+# state-sync.sh — keep agent memory and user instructions in a private git repo so
+# they follow you across devices and tools. OPTIONAL and reversible; does nothing
+# until `init` has run on a device.
 #
-# What is synced (and nothing else):
-#   <claude-home>/agent-memory/   memory of agents declared `memory: user`
-#   <claude-home>/CLAUDE.md       your user-level instructions
-# Never synced: settings*.json, credentials, plugins/, projects/ (transcripts).
+# What is synced: see state-items.sh — Claude Code (agent memory, per-project auto
+# memory, CLAUDE.md), Goose (memory, .goosehints), Hermes (memories), Codex
+# (AGENTS.md) — every tool's own instruction file is a link to ONE INSTRUCTIONS.md.
+# Never synced: settings, credentials, sessions/transcripts, Codex's memory store.
 #
-# How: the state repo is cloned to $SYNC_DIR and the two items above become
-# symlinks into it. Hooks keep it current:
-#   SessionStart -> state-sync.sh pull   (commit local edits, then pull --rebase)
-#   SessionEnd   -> state-sync.sh push   (commit, then pull --rebase + push in background)
+# Where: $STATE_DIR from ~/.config/agent-recipes/state.conf (written by setup.sh or
+# `state-sync.sh config`), default ~/.agent-state; STATE_SYNC_DIR in the environment
+# overrides both (tests). The hooks and the /sync-state command read the same file,
+# so they can never disagree about the directory. A phase-4 ~/.claude-state is
+# moved and converted by `init`.
 #
 # Usage:
-#   state-sync.sh init <git-url>   clone/adopt, link, first push
+#   state-sync.sh config [dir=… remote=… tools=… auto_memory=yes|no]   show / write state.conf
+#   state-sync.sh init [git-url]   clone (or create, local-only), adopt, link, first push
 #   state-sync.sh pull | push      hook entrypoints — silent, always exit 0
-#   state-sync.sh status           what is linked, ahead/behind, recent log
-#   state-sync.sh off              replace the symlinks with plain copies and stop
-#                                  the hooks on this device (init turns it back on)
+#   state-sync.sh status           what is linked, ahead/behind, warnings, recent log
+#   state-sync.sh off              replace the links with plain copies and stop the
+#                                  hooks on this device (init turns it back on)
+#   state-sync.sh items | detect   what init would link / which tools are detected
 #
-# Hook contract: `pull` and `push` never fail the session, and print NOTHING on stdout
+# Hook contract: `pull` and `push` never fail the session and print NOTHING on stdout
 # (SessionStart stdout is added to Claude's context) — with one deliberate exception:
-# when a pull brings in a CLAUDE.md change from another device, `pull` prints a
-# single line saying so. Claude Code
-# loads the user CLAUDE.md before SessionStart hooks finish, so without that line the
-# session would silently run on the previous version.
+# when a pull brings in an INSTRUCTIONS.md change from another device, `pull` prints a
+# single line saying so, because Claude Code loads the user CLAUDE.md before
+# SessionStart hooks finish.
 set -euo pipefail
 
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CLAUDE_HOME="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
-# One fixed location on every device. STATE_SYNC_DIR exists for tests; it is NOT a
-# plugin option on purpose: hooks and the /sync-state command must always agree on
-# the directory, and Bash-tool commands do not receive plugin options.
-SYNC_DIR="${STATE_SYNC_DIR:-$HOME/.claude-state}"
+CONF_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/agent-recipes"
+CONF="$CONF_DIR/state.conf"
+LEGACY_DIR="$HOME/.claude-state"            # phase 4's fixed location
+CONF_KEYS="STATE_DIR STATE_REMOTE STATE_TOOLS STATE_CLAUDE_AUTO_MEMORY"
+
+# conf_value <KEY>: the value in state.conf (quotes stripped), empty when absent.
+conf_value() {
+    local line
+    line="$(grep -s "^$1=" "$CONF" | tail -1)" || true
+    line="${line#*=}"; line="${line%\"}"; line="${line#\"}"
+    printf '%s' "$line"
+}
+# load_config: the file fills in every STATE_* key the environment did not set.
+load_config() {
+    local k
+    [[ -f "$CONF" ]] || return 0
+    for k in $CONF_KEYS; do
+        [[ -n "${!k:-}" ]] || printf -v "$k" '%s' "$(conf_value "$k")"
+    done
+}
+load_config
+: "${STATE_DIR:=}" "${STATE_REMOTE:=}" "${STATE_TOOLS:=}" "${STATE_CLAUDE_AUTO_MEMORY:=yes}"
+SYNC_DIR="${STATE_SYNC_DIR:-${STATE_DIR:-$HOME/.agent-state}}"
 LOG="$SYNC_DIR/.sync.log"
-DIR_ITEMS=(agent-memory)
-FILE_ITEMS=(CLAUDE.md)
+OFF_MARK="$SYNC_DIR/.git/state-sync-off"   # inside .git: per device, never committed
 
 # File names that must never be committed, and high-signal secret shapes in content.
 SECRET_NAMES='(^|/)(\.env(\..*)?|id_(rsa|ed25519|ecdsa|dsa)|.*\.(pem|ppk|p12|pfx)|.*credentials.*|settings.*\.json)$'
@@ -44,10 +66,14 @@ export GIT_TERMINAL_PROMPT=0
 export GIT_SSH_COMMAND="${GIT_SSH_COMMAND:-ssh -o BatchMode=yes -o ConnectTimeout=5}"
 
 g() { git -C "$SYNC_DIR" -c commit.gpgsign=false "$@"; }
-OFF_MARK="$SYNC_DIR/.git/state-sync-off"   # inside .git: per device, never committed
 initialized() { [[ -d "$SYNC_DIR/.git" ]]; }
 active() { initialized && [[ ! -e "$OFF_MARK" ]]; }
+has_origin() { g remote get-url origin >/dev/null 2>&1; }
+origin_url() { g remote get-url origin 2>/dev/null || true; }
 logline() { printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" >> "$LOG"; }
+
+# shellcheck source=state-items.sh
+. "$HERE/state-items.sh"
 
 HELD_NOTE="HELD BACK (looks like a secret, not committed):"
 
@@ -68,24 +94,23 @@ hold_back_secrets() {
 }
 
 commit_local() {
+    local msg="${1:-sync($(hostname -s 2>/dev/null || hostname)): $(date -u +%Y-%m-%dT%H:%M:%SZ)}"
     g add -A
     hold_back_secrets || true
     if ! g diff --cached --quiet; then
-        g commit -q -m "sync($(hostname -s 2>/dev/null || hostname)): $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+        g commit -q -m "$msg"
         logline "committed local changes"
     fi
 }
 
-# A hook killed by its timeout can leave a rebase half-done or a lock behind; every
-# later git call would then fail. Undo both before doing anything else. Only a lock
-# older than two minutes is removed — a fresh one belongs to a git that is running
-# right now (another Claude session starting at the same moment).
 rebase_in_progress() { [[ -d "$SYNC_DIR/.git/rebase-merge" || -d "$SYNC_DIR/.git/rebase-apply" ]]; }
 abort_rebase() { ! rebase_in_progress || g rebase --abort >>"$LOG" 2>&1 || true; }
 
+# A hook killed by its timeout can leave a rebase half-done or a lock behind; every
+# later git call would then fail. Undo both before doing anything else — but only when
+# they are OLD: a fresh one belongs to a git that is running right now (the background
+# push of the session that just ended, another session starting at the same moment).
 heal() {
-    # Only an OLD rebase state is ours to abort: a fresh one belongs to the
-    # background push of the session that just ended (same two-minute rule as the lock).
     if [[ -n "$(find "$SYNC_DIR/.git" -maxdepth 1 \( -name rebase-merge -o -name rebase-apply \) -mmin +2 2>/dev/null)" ]]; then
         abort_rebase
         logline "aborted a rebase left half-done by an interrupted run"
@@ -97,14 +122,13 @@ heal() {
 }
 
 # Fetch (the only network step), then rebase local commits onto the remote.
-# *.md files union-merge and cannot conflict. For anything else a second attempt
-# keeps THIS device's version of the conflicting lines, so two devices always
-# converge instead of one of them silently falling out of sync.
-# --autostash: a held-back secret is an UNSTAGED change to a tracked file, and a
-# plain rebase refuses to start with one; without it that device would stop
-# syncing in both directions until the secret was removed.
+# *.md and *.txt files union-merge and cannot conflict. For anything else a second
+# attempt keeps THIS device's version of the conflicting lines, so two devices always
+# converge. --autostash: a held-back secret is an UNSTAGED change to a tracked file,
+# and a plain rebase refuses to start with one. Local-only stores skip all of this.
 pull_rebase() {
     local upstream
+    has_origin || return 0
     if ! g fetch --quiet origin >>"$LOG" 2>&1; then
         logline "FETCH FAILED (offline?) — local state kept, will retry next session"
         return 1
@@ -125,24 +149,27 @@ pull_rebase() {
     return 1
 }
 
-sync_remote() { pull_rebase && g push --quiet >>"$LOG" 2>&1 && logline "pushed" || logline "PUSH SKIPPED/FAILED"; }
+sync_remote() {
+    has_origin || return 0
+    pull_rebase && g push --quiet >>"$LOG" 2>&1 && logline "pushed" || logline "PUSH SKIPPED/FAILED"
+}
 
-claude_md_rev() { g rev-parse -q --verify HEAD:CLAUDE.md 2>/dev/null || true; }
+instructions_rev() { g rev-parse -q --verify "HEAD:$INSTRUCTIONS" 2>/dev/null || true; }
 
 cmd_pull() {
     active || return 0
     local before
-    { heal; commit_local; } >>"$LOG" 2>&1 || true
-    before="$(claude_md_rev)"   # after the local commit: only a REMOTE change counts
+    { heal; adopt_auto_memory; commit_local; } >>"$LOG" 2>&1 || true
+    before="$(instructions_rev)"   # after the local commit: only a REMOTE change counts
     pull_rebase >>"$LOG" 2>&1 || true
-    if [[ "$(claude_md_rev)" != "$before" ]]; then
-        echo "state-sync: $CLAUDE_HOME/CLAUDE.md was updated from another device during startup. Read that file now; the copy loaded at the start of this session is out of date."
+    if [[ "$(instructions_rev)" != "$before" ]]; then
+        echo "state-sync: $CLAUDE_HOME/CLAUDE.md was updated from another device during startup (it is the shared $INSTRUCTIONS). Read that file now; the copy loaded at the start of this session is out of date."
     fi
 }
 
 cmd_push() {
     active || return 0
-    { heal; commit_local; } >>"$LOG" 2>&1 || true
+    { heal; adopt_auto_memory; commit_local; } >>"$LOG" 2>&1 || true
     if [[ "${STATE_SYNC_FOREGROUND:-}" == 1 ]]; then
         sync_remote || true
     else
@@ -151,119 +178,100 @@ cmd_push() {
     fi
 }
 
-# copy_missing <src-dir> <dst-dir>: copy files that do not exist in dst (never overwrite).
-copy_missing() {
-    local src="$1" dst="$2" f
-    while IFS= read -r -d '' f; do
-        [[ -e "$dst/$f" ]] && continue
-        mkdir -p "$(dirname "$dst/$f")"
-        cp -p "$src/$f" "$dst/$f"
-    done < <(cd "$src" && find . -type f -print0)
-}
-
-# unlink_foreign <path>: a symlink that already points INTO the sync repo is simply
-# re-pointed by the caller; one that points elsewhere (a dotfiles repo) is replaced
-# by a plain copy of its target first, so nothing is lost and nothing dangles.
-unlink_foreign() {
-    local path="$1" target
-    target="$(python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$path")"
-    case "$target" in "$SYNC_DIR"/*) return 1 ;; esac
-    rm "$path"
-    if [[ -e "$target" ]]; then
-        cp -R "$target" "$path"
-        echo "  note: $path was a link to $target; that content now lives in the sync repo"
-    fi
-    return 0
-}
-
-# adopt <item> <dir|file>: move/merge the local item into the repo, then symlink it.
-adopt() {
-    local item="$1" kind="$2" local_path="$CLAUDE_HOME/$1" repo_path="$SYNC_DIR/$1" backup
-    if [[ -L "$local_path" ]] && ! unlink_foreign "$local_path"; then
-        ln -sfn "$repo_path" "$local_path"; return 0
-    fi
-    if [[ -e "$local_path" ]]; then
-        if [[ -e "$repo_path" && "$kind" == dir ]]; then
-            # Both sides have it: repo wins on collisions; local-only files are added.
-            copy_missing "$local_path" "$repo_path"
-            backup="$CLAUDE_HOME/.state-sync-backup/$(date -u +%Y%m%dT%H%M%SZ)"
-            mkdir -p "$backup"; mv "$local_path" "$backup/"
-            echo "  merged $item: local-only files added, the repo's version replaced yours on collisions (your previous copy: $backup/$item)"
-        elif [[ -e "$repo_path" ]] && cmp -s "$local_path" "$repo_path"; then
-            rm "$local_path"                      # identical: nothing to decide
-        elif [[ -e "$repo_path" && -e "$OFF_MARK" && ! "$OFF_MARK" -nt "$local_path" ]]; then
-            # This device edited the file after `off` (the marker is older than the
-            # file): its copy wins; the repo's version stays in git history. A device
-            # joining for the first time has no marker and gets the repo's version.
-            cp "$local_path" "$repo_path"; rm "$local_path"
-            echo "  kept this device's newer $item and replaced the repo's copy (previous version: git history)"
-        elif [[ -e "$repo_path" ]]; then
-            backup="$CLAUDE_HOME/.state-sync-backup/$(date -u +%Y%m%dT%H%M%SZ)"
-            mkdir -p "$backup"; mv "$local_path" "$backup/"
-            echo "  replaced your $item with the repo's version (your previous copy: $backup/$item)"
-        else
-            mv "$local_path" "$repo_path"
-        fi
-    elif [[ ! -e "$repo_path" ]]; then
-        if [[ "$kind" == dir ]]; then mkdir -p "$repo_path"; else : > "$repo_path"; fi
-    fi
-    ln -s "$repo_path" "$local_path"
-    echo "  linked $local_path -> $repo_path"
-}
-
 write_repo_files() {
-    [[ -f "$SYNC_DIR/.gitattributes" ]] || printf '*.md merge=union\n' > "$SYNC_DIR/.gitattributes"
+    local attrs="$SYNC_DIR/.gitattributes"
+    grep -qsx '\*\.md merge=union'  "$attrs" || echo '*.md merge=union'  >> "$attrs"
+    grep -qsx '\*\.txt merge=union' "$attrs" || echo '*.txt merge=union' >> "$attrs"
     [[ -f "$SYNC_DIR/.gitignore" ]] || printf '.sync.log\n' > "$SYNC_DIR/.gitignore"
     # A box with no global git identity must still be able to commit.
     g config user.name  >/dev/null 2>&1 || g config user.name  "state-sync"
     g config user.email >/dev/null 2>&1 || g config user.email "state-sync@$(hostname)"
 }
 
+# A phase-4 store at ~/.claude-state moves to the configured location when that does
+# not exist yet, and its root-level layout becomes the per-tool one (history kept).
+migrate_legacy_store() {
+    if ! initialized && [[ "$SYNC_DIR" != "$LEGACY_DIR" && -d "$LEGACY_DIR/.git" && ! -e "$SYNC_DIR" ]]; then
+        mkdir -p "$(dirname "$SYNC_DIR")"
+        mv "$LEGACY_DIR" "$SYNC_DIR"
+        echo "  moved $LEGACY_DIR -> $SYNC_DIR"
+    fi
+}
+convert_legacy_layout() {
+    local moved=0
+    initialized || return 0
+    if [[ -e "$SYNC_DIR/agent-memory" ]]; then
+        mkdir -p "$SYNC_DIR/claude"
+        g mv -k agent-memory claude/agent-memory 2>/dev/null || mv "$SYNC_DIR/agent-memory" "$SYNC_DIR/claude/agent-memory"
+        moved=1
+    fi
+    if [[ -e "$SYNC_DIR/CLAUDE.md" ]]; then
+        g mv -k CLAUDE.md "$INSTRUCTIONS" 2>/dev/null || mv "$SYNC_DIR/CLAUDE.md" "$SYNC_DIR/$INSTRUCTIONS"
+        moved=1
+    fi
+    if (( moved )); then
+        commit_local "migrate to the phase 5 layout (claude/, $INSTRUCTIONS)"
+        echo "  converted the phase 4 layout: claude/agent-memory, $INSTRUCTIONS"
+    fi
+}
+
 cmd_init() {
-    local url="${1:-}" item
-    [[ -n "$url" ]] || { echo "usage: state-sync.sh init <git-url>" >&2; exit 2; }
+    local url="${1:-$STATE_REMOTE}"
     mkdir -p "$CLAUDE_HOME"
+    migrate_legacy_store
     if ! initialized; then
         [[ ! -e "$SYNC_DIR" ]] || { echo "error: $SYNC_DIR exists and is not a git repo" >&2; exit 1; }
-        git clone -q "$url" "$SYNC_DIR"
-    elif [[ "$(g remote get-url origin 2>/dev/null)" != "$url" ]]; then
-        echo "error: $SYNC_DIR already syncs with $(g remote get-url origin 2>/dev/null); remove it first to use another repository" >&2
-        exit 1
+        if [[ -n "$url" ]]; then
+            git clone -q "$url" "$SYNC_DIR"
+        else
+            git init -q "$SYNC_DIR"
+            git -C "$SYNC_DIR" symbolic-ref HEAD refs/heads/main
+        fi
+    elif [[ -n "$url" && "$(origin_url)" != "$url" ]]; then
+        if has_origin; then
+            echo "error: $SYNC_DIR already syncs with $(origin_url); remove it first to use another repository" >&2
+            exit 1
+        fi
+        g remote add origin "$url"
     fi
+    convert_legacy_layout
     write_repo_files
-    for item in "${DIR_ITEMS[@]}";  do adopt "$item" dir;  done
-    for item in "${FILE_ITEMS[@]}"; do adopt "$item" file; done
+    build_instructions
+    adopt_items
+    adopt_auto_memory
+    ensure_shared_paragraph
+    write_shared_readme
     rm -f "$OFF_MARK"                 # after adopt(): it dates this device's edits
     commit_local
-    g push -q -u origin HEAD
-    echo "state sync is ON: $SYNC_DIR -> $(g remote get-url origin)"
+    if has_origin; then
+        g push -q -u origin HEAD
+        echo "state sync is ON: $SYNC_DIR -> $(origin_url)"
+    else
+        echo "state sync is ON (local-only, no remote): $SYNC_DIR"
+    fi
     echo "Keep that repository PRIVATE: agent memory can contain details of your work."
 }
 
 cmd_off() {
-    local item
-    for item in "${DIR_ITEMS[@]}" "${FILE_ITEMS[@]}"; do
-        if [[ -L "$CLAUDE_HOME/$item" ]]; then
-            rm "$CLAUDE_HOME/$item"
-            [[ -e "$SYNC_DIR/$item" ]] && cp -R "$SYNC_DIR/$item" "$CLAUDE_HOME/$item"
-            echo "  unlinked $item (plain copy restored)"
-        fi
-    done
+    unlink_all
     if initialized; then : > "$OFF_MARK"; fi
-    echo "state sync is OFF on this device. The repo at $SYNC_DIR is untouched; 'init <git-url>' turns sync back on, or delete the directory if it is unwanted."
+    echo "state sync is OFF on this device. The repo at $SYNC_DIR is untouched; 'init' turns sync back on, or delete the directory if it is unwanted."
 }
 
 cmd_status() {
-    local item
+    local k n r
     if ! initialized; then echo "state sync: OFF (no repo at $SYNC_DIR)"; return 0; fi
     if ! active; then
-        echo "state sync: OFF on this device (repo kept at $SYNC_DIR; 'init <git-url>' turns it back on)"
+        echo "state sync: OFF on this device (repo kept at $SYNC_DIR; 'init' turns it back on)"
         return 0
     fi
-    echo "state sync: ON  $SYNC_DIR -> $(g remote get-url origin 2>/dev/null || echo '(no remote)')"
-    for item in "${DIR_ITEMS[@]}" "${FILE_ITEMS[@]}"; do
-        if [[ -L "$CLAUDE_HOME/$item" ]]; then echo "  linked    $item"; else echo "  NOT linked $item (run init again)"; fi
-    done
+    if has_origin; then echo "state sync: ON  $SYNC_DIR -> $(origin_url)"
+    else echo "state sync: ON  $SYNC_DIR (local-only, no remote)"; fi
+    echo "tools: $(active_tools)"
+    while IFS=$'\t' read -r _ k n r; do
+        if [[ -L "$n" ]]; then echo "  linked    $r  <- $n"; else echo "  missing   $r  <- $n (run init again)"; fi
+    done < <(items; auto_memory_items)
+    hermes_cap_warnings
     g status -sb | head -1
     if grep -qsF "$HELD_NOTE" "$LOG"; then
         echo "held back, never committed (they look like secrets):"
@@ -273,11 +281,40 @@ cmd_status() {
     return 0
 }
 
+# config [key=value …]: show state.conf, or write it (dir, remote, tools, auto_memory).
+cmd_config() {
+    local dir remote tools auto kv k v
+    if [[ $# -eq 0 ]]; then [[ -f "$CONF" ]] && cat "$CONF"; return 0; fi
+    dir="$(conf_value STATE_DIR)"; remote="$(conf_value STATE_REMOTE)"
+    tools="$(conf_value STATE_TOOLS)"; auto="$(conf_value STATE_CLAUDE_AUTO_MEMORY)"
+    for kv in "$@"; do
+        k="${kv%%=*}"; v="${kv#*=}"
+        case "$k" in
+            dir)    dir="$v" ;;
+            remote) remote="$v" ;;
+            tools)  tools="$v" ;;
+            auto_memory)
+                case "$v" in yes|no) auto="$v" ;; *) echo "error: auto_memory must be yes or no" >&2; return 2 ;; esac ;;
+            *) echo "error: unknown key '$k' (expected dir=, remote=, tools=, auto_memory=)" >&2; return 2 ;;
+        esac
+    done
+    mkdir -p "$CONF_DIR"
+    {
+        echo "# agent-recipes state sync: where agent memory and instructions live."
+        echo "# Written by setup.sh or 'state-sync.sh config'; read by the hooks and /sync-state."
+        printf 'STATE_DIR="%s"\nSTATE_REMOTE="%s"\nSTATE_TOOLS="%s"\nSTATE_CLAUDE_AUTO_MEMORY="%s"\n' \
+            "$dir" "$remote" "$tools" "${auto:-yes}"
+    } > "$CONF"
+}
+
 case "${1:-status}" in
-    init)   shift; cmd_init "$@" ;;
+    init)   shift; cmd_init "${1:-}" ;;
     pull)   cmd_pull ;;
     push)   cmd_push ;;
     off)    cmd_off ;;
     status) cmd_status ;;
-    *)      echo "usage: state-sync.sh {init <git-url>|pull|push|status|off}" >&2; exit 2 ;;
+    config) shift; cmd_config "$@" ;;
+    items)  list_items ;;
+    detect) detect_tools ;;
+    *)      echo "usage: state-sync.sh {init [git-url]|pull|push|status|off|config [key=value…]|items|detect}" >&2; exit 2 ;;
 esac
