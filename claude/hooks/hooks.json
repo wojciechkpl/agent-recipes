@@ -1,64 +1,53 @@
 {
-  "description": "agent-recipes: safety guard, Signal notifications",
+  "description": "agent-recipes: safety guard, Signal notifications, cross-device state sync",
   "hooks": {
     "PreToolUse": [
       {
         "matcher": "Bash|Read",
         "hooks": [
-          {
-            "type": "command",
-            "command": "sh",
-            "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/guard.sh",
-              "plugin"
-            ],
-            "timeout": 10
-          }
+          { "type": "command", "command": "sh",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/guard.sh", "plugin"], "timeout": 10 }
         ]
       }
     ],
     "UserPromptSubmit": [
       {
         "hooks": [
-          {
-            "type": "command",
-            "command": "python3",
-            "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/notify.py",
-              "mark"
-            ],
-            "async": true
-          }
+          { "type": "command", "command": "python3",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/notify.py", "mark"], "async": true }
         ]
       }
     ],
     "Stop": [
       {
         "hooks": [
-          {
-            "type": "command",
-            "command": "python3",
-            "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/notify.py",
-              "stop"
-            ],
-            "timeout": 10
-          }
+          { "type": "command", "command": "python3",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/notify.py", "stop"], "timeout": 10 }
         ]
       }
     ],
     "Notification": [
       {
         "hooks": [
-          {
-            "type": "command",
-            "command": "python3",
-            "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/notify.py",
-              "notification"
-            ],
-            "async": true
-          }
+          { "type": "command", "command": "python3",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/notify.py", "notification"], "async": true }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "startup|resume",
+        "hooks": [
+          { "type": "command", "command": "bash",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/state-sync.sh", "pull"], "timeout": 20 }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          { "type": "command", "command": "bash",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/state-sync.sh", "push"], "timeout": 10 }
         ]
       }
     ]

@@ -16,7 +16,7 @@ jobs:
           shellcheck --version
           # warning+ fails the build; info-level style notes (e.g. SC2059 for
           # the color-escape printf pattern in setup.sh) do not.
-          shellcheck --severity=warning setup.sh claude/autonomous-mode.sh claude/hooks/guard.sh tests/*.sh
+          shellcheck --severity=warning setup.sh claude/autonomous-mode.sh claude/hooks/guard.sh claude/scripts/state-sync.sh tests/*.sh
 
   validate-json:
     name: Validate JSON manifests
@@ -52,3 +52,5 @@ jobs:
         run: tests/test_plugin_guard.sh
       - name: Signal notifier
         run: tests/test_notify.sh
+      - name: cross-device state sync
+        run: tests/test_state_sync.sh
