@@ -183,6 +183,29 @@ check "fresh install: no hooks key written" \
   python3 -c "import json;assert 'hooks' not in json.load(open('.claude/settings.json'))"
 check "unknown flag is rejected (exit 2)" bash -c "'$TOGGLE' on --bogus >/dev/null 2>&1; [[ \$? -eq 2 ]]"
 check "a rejected call wrote nothing to global settings" test ! -e "$HOME/.claude/settings.json"
+
+echo "── lost backup + re-run on --plugin, then off, really turns autonomous OFF ──"
+# Mirrors the "lost backup" case in tests/test_autonomous_mode.sh for plugin installs.
+# A plugin install writes NO hook, so the toggle must recognise an already-autonomous
+# settings.json by the merged allow-list alone: re-running `on` after the backup
+# vanished must not snapshot that autonomous state as "pre-autonomous", or `off`
+# would faithfully restore an ON state.
+lostbak="$workdir/lostbak"
+mkdir -p "$lostbak/.claude"
+cd "$lostbak"
+printf '{ "model": "opus" }\n' > .claude/settings.json
+"$TOGGLE" on --project --plugin >/dev/null
+rm -f .claude/settings.pre-autonomous.json
+"$TOGGLE" on --project --plugin >"$workdir/reon.out"
+check "re-run on --plugin w/o backup: does not back up the autonomous state" \
+  bash -c "! grep -q 'Backed up' '$workdir/reon.out'"
+"$TOGGLE" off --project --plugin >/dev/null
+check "lost backup + re-on + off --plugin: defaultMode is gone" \
+  python3 -c "import json;d=json.load(open('.claude/settings.json'));assert 'defaultMode' not in d.get('permissions',{}),d.get('permissions')"
+check "lost backup + re-on + off --plugin: user's model stays opus" \
+  python3 -c "import json;assert json.load(open('.claude/settings.json')).get('model')=='opus'"
+check "lost backup + re-on + off --plugin: status reports OFF" \
+  bash -c "'$TOGGLE' status --project --plugin | grep -q 'is OFF'"
 cd "$REPO"
 
 echo "── /autonomous-mode command ──"

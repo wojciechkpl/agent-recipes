@@ -188,6 +188,30 @@ check "a name-based hold-back is logged"     grep -q "HELD BACK.*notes-credentia
 check "each held-back file is logged once"   test "$(grep -c 'HELD BACK.*notes-credentials.md' "$A/.claude-state/.sync.log")" -eq 1
 check "status lists what is held back"       bash -c "HOME='$A' '$SYNC' status | grep -q 'notes-credentials.md'"
 
+echo "── a secret appended to an ALREADY-TRACKED file does not stop sync ──"
+# Holding back a tracked file leaves an UNSTAGED change behind. A plain rebase
+# refuses to start on top of one, which would freeze this device in both
+# directions until the secret was removed; --autostash keeps the sync flowing.
+# AKIAIOSFODNN7EXAMPLE is AWS's documented example access key.
+printf 'clean notes\n' > "$A/.claude/agent-memory/rust-expert/notes.md"
+on "$A" push; on "$B" pull
+check "setup: notes.md is tracked"            tracked agent-memory/rust-expert/notes.md
+printf 'Rule from B while A holds a secret.\n' >> "$B/.claude/CLAUDE.md"
+on "$B" push
+printf 'key AKIAIOSFODNN7EXAMPLE\n' >> "$A/.claude/agent-memory/rust-expert/notes.md"
+printf 'written next to the secret\n' > "$A/.claude/agent-memory/rust-expert/clean.md"
+pull_rc=0
+on "$A" pull >"$workdir/heldpull.out" 2>/dev/null || pull_rc=$?
+check "pull exits 0 with an unstaged held-back change" test "$pull_rc" -eq 0
+check "pull still delivered B's CLAUDE.md line" grep -q "Rule from B while A holds" "$A/.claude/CLAUDE.md"
+check "pull announced the CLAUDE.md change (one line)" test "$(wc -l < "$workdir/heldpull.out" | tr -d ' ')" -eq 1
+check "HEAD's notes.md has no AKIA key"       bash -c "! git -C '$A/.claude-state' show HEAD:agent-memory/rust-expert/notes.md | grep -q AKIA"
+check "the working copy still has the key"    grep -q AKIAIOSFODNN7EXAMPLE "$A/.claude/agent-memory/rust-expert/notes.md"
+on "$A" push
+check "push delivered clean.md to the remote" bash -c "git -C '$workdir/remote.git' ls-tree -r --name-only HEAD | grep -qx agent-memory/rust-expert/clean.md"
+check "the tracked file's hold-back is logged" grep -q "HELD BACK.*agent-memory/rust-expert/notes\.md" "$A/.claude-state/.sync.log"
+check "no rebase failed along the way"        bash -c "! grep -q 'REBASE FAILED' '$A/.claude-state/.sync.log'"
+
 echo "── status / off ──"
 check "status reports ON"           bash -c "HOME='$A' '$SYNC' status | grep -q 'state sync: ON'"
 on "$A" off >/dev/null
