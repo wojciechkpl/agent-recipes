@@ -5,12 +5,13 @@
     "PreToolUse": [
       {
         "matcher": "Bash|Read",
-        "hooks": [
-          { "type": "command", "command": "\"__GUARD__\"" }
-        ]
+        "hooks": [{ "type": "command", "command": "\"__GUARD__\"" }]
       }
     ]
   },
+  "autoUpdatesChannel": "latest",
+  "includeCoAuthoredBy": false,
+  "verbose": true,
   "permissions": {
     "defaultMode": "acceptEdits",
     "allow": [

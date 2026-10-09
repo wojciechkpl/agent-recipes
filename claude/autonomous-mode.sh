@@ -6,6 +6,9 @@
 #   * defaultMode:acceptEdits
 #   * a broad dev-toolchain allow-list
 #   * a safety deny-list
+#   * the profile's other top-level keys (autoUpdatesChannel, verbose, ...) — profile
+#     value wins, also on re-sync; `off` without a backup drops the ones still
+#     equal to the profile value
 #   * a PreToolUse guard hook (claude/hooks/guard.sh) — the REAL safety net: it inspects
 #     the actual command and blocks secret-exfil / catastrophic deletes / force-push /
 #     RCE-pipes that brittle string-prefix deny patterns cannot reliably catch.
@@ -50,14 +53,25 @@ sys.exit(0 if d.get("permissions",{}).get("defaultMode")=="acceptEdits" else 1)
 EOF
 }
 
+# An autonomous state `on` produced: acceptEdits AND our guard hook (guard.sh or
+# legacy guard.py). Either alone can be the user's own pre-autonomous setup.
+is_autonomous() {
+  is_on && grep -q 'hooks/guard\.' "$SETTINGS"
+}
+
 case "$ACTION" in
   on)
     [[ -f "$PROFILE" ]] || { echo "❌ Missing $PROFILE"; exit 1; }
     [[ -f "$GUARD" ]]   || { echo "❌ Missing guard hook: $GUARD"; exit 1; }
     if is_on; then
-      echo "🔄 Autonomous mode already ON ($SCOPE) — re-syncing profile (allow/deny/hooks)."
-    else
-      [[ -f "$SETTINGS" ]] && cp "$SETTINGS" "$BACKUP" && echo "📦 Backed up → $BACKUP"
+      echo "🔄 Autonomous mode already ON ($SCOPE) — re-syncing profile (allow/deny/hooks/keys)."
+    fi
+    # Back up whenever no backup exists — even if already "on" (e.g. the user set
+    # acceptEdits themselves) — so the keys the merge overwrites stay recoverable.
+    # Never snapshot an autonomous state (e.g. re-running `on` after the backup was
+    # lost): `off` restoring it would leave autonomous mode on.
+    if [[ -f "$SETTINGS" && ! -f "$BACKUP" ]] && ! is_autonomous; then
+      cp "$SETTINGS" "$BACKUP" && echo "📦 Backed up → $BACKUP"
     fi
     python3 - "$SETTINGS" "$PROFILE" "$GUARD" <<'EOF'
 import json,os,sys
@@ -69,6 +83,10 @@ perm=base.setdefault("permissions",{})
 perm["defaultMode"]=p["defaultMode"]
 perm["allow"]=sorted(set(perm.get("allow",[]))|set(p["allow"]))
 perm["deny"]=sorted(set(perm.get("deny",[]))|set(p.get("deny",[])))
+# Every other top-level profile key (skip "//" doc keys): profile value wins.
+for k,v in prof.items():
+    if k not in ("permissions","hooks") and not k.startswith("//"):
+        base[k]=v
 # Merge hooks, substituting the guard placeholder with its absolute path.
 # Idempotent: drop any prior guard entry for the same matcher before re-adding.
 # Matches "hooks/guard." so it also recognises pre-guard.sh installs that still
@@ -87,13 +105,26 @@ EOF
     ;;
   off)
     if ! is_on; then echo "⚪ Autonomous mode already OFF ($SCOPE)."; exit 0; fi
+    restored=0
     if [[ -f "$BACKUP" ]]; then
-      mv "$BACKUP" "$SETTINGS"; echo "🔵 Restored pre-autonomous settings ($SCOPE). Restart to apply."
-    else
-      python3 - "$SETTINGS" <<'EOF'
+      mv "$BACKUP" "$SETTINGS"; restored=1
+      echo "🔵 Restored pre-autonomous settings ($SCOPE). Restart to apply."
+    fi
+    # No backup — or a backup that was itself taken while autonomous (older
+    # versions of this script did that) — so strip surgically.
+    if [[ "$restored" == 0 ]] || is_autonomous; then
+      python3 - "$SETTINGS" "$PROFILE" <<'EOF'
 import json,sys
 d=json.load(open(sys.argv[1]))
+try:
+    prof=json.load(open(sys.argv[2]))
+except (OSError,ValueError):
+    prof={}  # missing/broken profile: still turn autonomous mode off
 d.get("permissions",{}).pop("defaultMode",None)
+# Drop top-level keys `on` set, unless the user has since changed their value.
+for k,v in prof.items():
+    if k not in ("permissions","hooks") and not k.startswith("//") and d.get(k,object())==v:
+        del d[k]
 # Strip our guard hook; drop now-empty hook events / the hooks key entirely.
 # "hooks/guard." covers both the guard.sh entrypoint and older guard.py installs.
 hk=d.get("hooks",{})
