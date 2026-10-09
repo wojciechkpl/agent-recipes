@@ -84,7 +84,9 @@ rebase_in_progress() { [[ -d "$SYNC_DIR/.git/rebase-merge" || -d "$SYNC_DIR/.git
 abort_rebase() { ! rebase_in_progress || g rebase --abort >>"$LOG" 2>&1 || true; }
 
 heal() {
-    if rebase_in_progress; then
+    # Only an OLD rebase state is ours to abort: a fresh one belongs to the
+    # background push of the session that just ended (same two-minute rule as the lock).
+    if [[ -n "$(find "$SYNC_DIR/.git" -maxdepth 1 \( -name rebase-merge -o -name rebase-apply \) -mmin +2 2>/dev/null)" ]]; then
         abort_rebase
         logline "aborted a rebase left half-done by an interrupted run"
     fi
@@ -108,6 +110,10 @@ pull_rebase() {
         return 1
     fi
     upstream="$(g rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null)" || return 0
+    if rebase_in_progress; then
+        logline "another sync is still rebasing — skipped this run"
+        return 1
+    fi
     g rebase --quiet --autostash "$upstream" >>"$LOG" 2>&1 && return 0
     abort_rebase
     if g rebase --quiet --autostash -X theirs "$upstream" >>"$LOG" 2>&1; then
@@ -155,19 +161,46 @@ copy_missing() {
     done < <(cd "$src" && find . -type f -print0)
 }
 
+# unlink_foreign <path>: a symlink that already points INTO the sync repo is simply
+# re-pointed by the caller; one that points elsewhere (a dotfiles repo) is replaced
+# by a plain copy of its target first, so nothing is lost and nothing dangles.
+unlink_foreign() {
+    local path="$1" target
+    target="$(python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$path")"
+    case "$target" in "$SYNC_DIR"/*) return 1 ;; esac
+    rm "$path"
+    if [[ -e "$target" ]]; then
+        cp -R "$target" "$path"
+        echo "  note: $path was a link to $target; that content now lives in the sync repo"
+    fi
+    return 0
+}
+
 # adopt <item> <dir|file>: move/merge the local item into the repo, then symlink it.
 adopt() {
     local item="$1" kind="$2" local_path="$CLAUDE_HOME/$1" repo_path="$SYNC_DIR/$1" backup
-    if [[ -L "$local_path" ]]; then
+    if [[ -L "$local_path" ]] && ! unlink_foreign "$local_path"; then
         ln -sfn "$repo_path" "$local_path"; return 0
     fi
     if [[ -e "$local_path" ]]; then
-        if [[ -e "$repo_path" ]]; then
+        if [[ -e "$repo_path" && "$kind" == dir ]]; then
             # Both sides have it: repo wins on collisions; local-only files are added.
-            [[ "$kind" == dir ]] && copy_missing "$local_path" "$repo_path"
+            copy_missing "$local_path" "$repo_path"
             backup="$CLAUDE_HOME/.state-sync-backup/$(date -u +%Y%m%dT%H%M%SZ)"
             mkdir -p "$backup"; mv "$local_path" "$backup/"
-            echo "  merged $item (your previous copy: $backup/$item)"
+            echo "  merged $item: local-only files added, the repo's version replaced yours on collisions (your previous copy: $backup/$item)"
+        elif [[ -e "$repo_path" ]] && cmp -s "$local_path" "$repo_path"; then
+            rm "$local_path"                      # identical: nothing to decide
+        elif [[ -e "$repo_path" && -e "$OFF_MARK" && ! "$OFF_MARK" -nt "$local_path" ]]; then
+            # This device edited the file after `off` (the marker is older than the
+            # file): its copy wins; the repo's version stays in git history. A device
+            # joining for the first time has no marker and gets the repo's version.
+            cp "$local_path" "$repo_path"; rm "$local_path"
+            echo "  kept this device's newer $item and replaced the repo's copy (previous version: git history)"
+        elif [[ -e "$repo_path" ]]; then
+            backup="$CLAUDE_HOME/.state-sync-backup/$(date -u +%Y%m%dT%H%M%SZ)"
+            mkdir -p "$backup"; mv "$local_path" "$backup/"
+            echo "  replaced your $item with the repo's version (your previous copy: $backup/$item)"
         else
             mv "$local_path" "$repo_path"
         fi
@@ -197,10 +230,10 @@ cmd_init() {
         echo "error: $SYNC_DIR already syncs with $(g remote get-url origin 2>/dev/null); remove it first to use another repository" >&2
         exit 1
     fi
-    rm -f "$OFF_MARK"
     write_repo_files
     for item in "${DIR_ITEMS[@]}";  do adopt "$item" dir;  done
     for item in "${FILE_ITEMS[@]}"; do adopt "$item" file; done
+    rm -f "$OFF_MARK"                 # after adopt(): it dates this device's edits
     commit_local
     g push -q -u origin HEAD
     echo "state sync is ON: $SYNC_DIR -> $(g remote get-url origin)"

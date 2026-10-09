@@ -24,6 +24,9 @@ set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SYNC="${REPO}/claude/scripts/state-sync.sh"
+# Several checks call git directly (not through the on() wrapper); none of them may
+# read the developer's real ~/.gitconfig or the system config.
+export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1
 
 pass=0
 fail=0
@@ -75,6 +78,29 @@ check "B got A's memory"            grep -q thiserror "$B/.claude/agent-memory/r
 check "B kept its own memory"       grep -q "quote every" "$B/.claude/agent-memory/bash-expert/MEMORY.md"
 check "B got A's CLAUDE.md"         grep -q tersely "$B/.claude/CLAUDE.md"
 check "B's old copy was backed up"  bash -c "ls '$B/.claude/.state-sync-backup'/*/agent-memory/bash-expert/MEMORY.md >/dev/null"
+
+echo "── device C: init adopts state that is ALREADY a symlink (dotfiles) ──"
+# A user who keeps ~/.claude/CLAUDE.md and agent-memory as symlinks into a dotfiles
+# checkout must end up with the CONTENT in the sync repo, not a dangling link.
+C="$workdir/homeC"
+mkdir -p "$C/.claude" "$C/dotfiles/memory/python-expert"
+printf 'from dotfiles\n' > "$C/dotfiles/claude.md"
+printf 'memory from dotfiles\n' > "$C/dotfiles/memory/python-expert/MEMORY.md"
+ln -s "$C/dotfiles/claude.md" "$C/.claude/CLAUDE.md"
+ln -s "$C/dotfiles/memory" "$C/.claude/agent-memory"
+git init -q --bare "$workdir/remote2.git"
+init_rc=0
+on "$C" init "$workdir/remote2.git" >/dev/null 2>&1 || init_rc=$?
+check "init with symlinked state exits 0"          test "$init_rc" -eq 0
+check "CLAUDE.md resolves to an existing file"     test -e "$C/.claude/CLAUDE.md"
+check "CLAUDE.md content survived"                 grep -q "from dotfiles" "$C/.claude/CLAUDE.md"
+check "repo holds CLAUDE.md with that content"     grep -q "from dotfiles" "$C/.claude-state/CLAUDE.md"
+check "CLAUDE.md is committed"                     bash -c "git -C '$C/.claude-state' show HEAD:CLAUDE.md | grep -q 'from dotfiles'"
+check "CLAUDE.md was pushed"                       bash -c "git -C '$workdir/remote2.git' show HEAD:CLAUDE.md | grep -q 'from dotfiles'"
+check "agent-memory resolves to an existing dir"   test -d "$C/.claude/agent-memory"
+check "memory content survived"                    grep -q "memory from dotfiles" "$C/.claude/agent-memory/python-expert/MEMORY.md"
+check "memory file is committed"                   bash -c "git -C '$C/.claude-state' show HEAD:agent-memory/python-expert/MEMORY.md | grep -q 'memory from dotfiles'"
+check "memory file was pushed"                     bash -c "git -C '$workdir/remote2.git' show HEAD:agent-memory/python-expert/MEMORY.md | grep -q 'memory from dotfiles'"
 
 echo "── A -> B propagation ──"
 on "$A" pull
@@ -152,8 +178,14 @@ git -C "$B/.claude-state" add -A
 git -C "$B/.claude-state" -c user.name=t -c user.email=t@t commit -q -m "local edit"
 git -C "$B/.claude-state" pull --rebase --quiet >/dev/null 2>&1 || true   # stops on the conflict
 check "setup: B is stuck mid-rebase"          test -d "$B/.claude-state/.git/rebase-merge"
+# Mirrors the index.lock rule below: a rebase younger than two minutes belongs to a
+# git that may still be running (another session starting at the same moment) and
+# is left alone; only an OLD one is the debris of a killed hook.
+check "a FRESH rebase in progress is left alone, pull exits 0" \
+  bash -c "HOME='$B' STATE_SYNC_FOREGROUND=1 '$SYNC' pull >/dev/null 2>&1; rc=\$?; [[ \$rc -eq 0 && -d '$B/.claude-state/.git/rebase-merge' ]]"
+[[ -d "$B/.claude-state/.git/rebase-merge" ]] && touch -t 202001010000 "$B/.claude-state/.git/rebase-merge" || true
 on "$B" pull
-check "pull aborted the half-done rebase"     bash -c "[[ ! -d '$B/.claude-state/.git/rebase-merge' && ! -d '$B/.claude-state/.git/rebase-apply' ]]"
+check "pull aborted the OLD half-done rebase" bash -c "[[ ! -d '$B/.claude-state/.git/rebase-merge' && ! -d '$B/.claude-state/.git/rebase-apply' ]]"
 check "B's edit survived"                     grep -q "B2" "$B/.claude/agent-memory/rust-expert/data.json"
 touch -t 202001010000 "$A/.claude-state/.git/index.lock"
 printf 'after a stale lock\n' >> "$A/.claude/agent-memory/rust-expert/MEMORY.md"
@@ -221,16 +253,23 @@ check "off: repo left in place"     test -d "$A/.claude-state/.git"
 check "off: status reports OFF"     bash -c "HOME='$A' '$SYNC' status | grep -q 'state sync: OFF'"
 head_before="$(git -C "$A/.claude-state" rev-parse HEAD)"
 printf 'written while sync is off\n' > "$A/.claude/agent-memory/rust-expert/while-off.md"
+printf 'Edited while sync was off.\n' >> "$A/.claude/CLAUDE.md"   # the plain copy, newer than the repo's
 printf 'stray edit inside the repo\n' >> "$A/.claude-state/CLAUDE.md"
 check "off: pull is a silent no-op" bash -c "[[ -z \"\$(HOME='$A' STATE_SYNC_FOREGROUND=1 '$SYNC' pull 2>&1)\" ]]"
 check "off: push is a silent no-op" bash -c "[[ -z \"\$(HOME='$A' STATE_SYNC_FOREGROUND=1 '$SYNC' push 2>&1)\" ]]"
 check "off: hooks committed nothing" test "$(git -C "$A/.claude-state" rev-parse HEAD)" = "$head_before"
 git -C "$A/.claude-state" checkout -q -- CLAUDE.md
 check "init with a different remote is refused" bash -c "! HOME='$A' '$SYNC' init '$workdir/other.git' >/dev/null 2>&1"
-on "$A" init "$real_remote" >/dev/null
+on "$A" init "$real_remote" >"$workdir/reinit.out"
 check "init again: status reports ON"   bash -c "HOME='$A' '$SYNC' status | grep -q 'state sync: ON'"
 check "init again: relinked"            test -L "$A/.claude/agent-memory"
 check "init again: file written while off is now synced" tracked agent-memory/rust-expert/while-off.md
+# The local plain copy was edited AFTER off, so it is newer than the repo's copy:
+# it must win, land in the repo and be committed — not be overwritten by the repo.
+check "init again: the newer local CLAUDE.md edit wins"  grep -q "Edited while sync was off" "$A/.claude/CLAUDE.md"
+check "init again: ...and is committed"                  bash -c "git -C '$A/.claude-state' show HEAD:CLAUDE.md | grep -q 'Edited while sync was off'"
+check "init again: no 'merged' claim without saying the repo copy was replaced" \
+  bash -c "! grep -q 'merged CLAUDE.md' '$workdir/reinit.out' || grep -qi 'replac' '$workdir/reinit.out'"
 
 echo "── /sync-state command ──"
 CMD="${REPO}/claude/commands/sync-state.md"
