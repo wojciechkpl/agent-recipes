@@ -634,13 +634,16 @@ never included unless you opt in. Test with `/notify-test`. Setup in
 
 ## Sync across devices
 
-Optional: the memory of the agents that keep **user-level memory** (`ai-researcher` and
-the language experts) and your **user `CLAUDE.md`** follow you between machines through a
-**private git repository** (`~/.claude-state`). A session start pulls, a session end
-pushes; Markdown merges keep both devices' lines; files that look like secrets are never
-committed. Settings, credentials, plugins and transcripts are never synced.
-`/sync-state init <git-url>` on each device, `/sync-state status` to check. Setup in
-**[docs/TUTORIAL-notifications-sync.md §4](docs/TUTORIAL-notifications-sync.md#4-sync-across-devices)**.
+Optional: one **state store** — a private git repository, default `~/.agent-state` —
+holds agent memory and instructions for **every tool you use**: Claude Code's agent
+memory, per-project notes and `CLAUDE.md`; Goose's memory and `.goosehints`; Hermes'
+memories; Codex's `AGENTS.md`. Each tool's instruction file is a link to one shared
+`INSTRUCTIONS.md`, and a `shared/` folder of notes is the one memory all tools read and
+write. `./setup.sh --state` asks where the store lives and which remote syncs it (or none:
+this machine only, with history); a session start pulls, a session end pushes; Markdown
+and Goose categories merge line-wise; files that look like secrets are never committed.
+Settings, credentials and transcripts are never synced. Setup in
+**[docs/TUTORIAL-notifications-sync.md §4](docs/TUTORIAL-notifications-sync.md#4-sync-across-devices--and-across-tools)**.
 
 ---
 

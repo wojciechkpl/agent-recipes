@@ -13,11 +13,11 @@ flowchart LR
     subgraph BOX["Always-on box (Ubuntu)"]
         C1["Claude Code<br/>+ agent-recipes plugin"]
         D["signal-cli daemon<br/>127.0.0.1:18080"]
-        S1["~/.claude-state"]
+        S1["~/.agent-state"]
     end
     subgraph MAC["Mac"]
         C2["Claude Code<br/>+ agent-recipes plugin"]
-        S2["~/.claude-state"]
+        S2["~/.agent-state"]
     end
     PH["Phone<br/>Signal · Claude app"]
     R[("Private git repo")]
@@ -35,7 +35,7 @@ end with a check.
 | 1. Install or update the plugin | 2 min per device | Claude Code, `python3`, `git`, `bash` |
 | 2. The guard | 1 min | — |
 | 3. Signal notifications | 20–30 min once | A phone with Signal; ideally a second phone number |
-| 4. Sync across devices | 5 min, then 1 min per device | A private git repository |
+| 4. Sync across devices and tools | 5 min, then 1 min per device | A clone of this repo; a private git repository (optional) |
 | 5. Autonomous mode | 1 min | — |
 | 6. Phone and Mac access | 5 min | A Claude Pro, Max, Team or Enterprise plan |
 | 7. The same skills in Hermes or Codex | 2 min | A clone of this repo |
@@ -323,50 +323,92 @@ daemon has no password, so do this only on a network you fully control.
 
 ---
 
-## 4. Sync across devices
+## 4. Sync across devices — and across tools
 
-Your personal `CLAUDE.md` and the memory of the agents that keep user-level memory
-(`ai-researcher` and the Bash, Python, Rust, TypeScript, Flutter and PostgreSQL experts)
-live in `~/.claude/` on one machine. This puts them in a private git repository that
-every device pulls when a session starts and pushes when it ends.
+Agent memory and your instruction files live in one **state store**: a private git
+repository (default `~/.agent-state`) that every device pulls when a session starts and
+pushes when it ends. It holds the memory of every tool you use, each in its own folder,
+and **one shared instruction file** that all of them read:
 
-### 4.1 Create a private repository
+| Tool | What is linked into the store | Where in the store |
+|------|-------------------------------|--------------------|
+| Claude Code | `~/.claude/agent-memory/` (the agents with `memory: user`) | `claude/agent-memory/` |
+| | `~/.claude/projects/<project>/memory/` (the assistant's own notes, per project) | `claude/auto-memory/<project>/` |
+| | `~/.claude/CLAUDE.md` | `INSTRUCTIONS.md` |
+| Goose | `~/.config/goose/memory/` | `goose/memory/` |
+| | `~/.config/goose/.goosehints` | `INSTRUCTIONS.md` |
+| Hermes | `~/.hermes/memories/` | `hermes/memories/` |
+| Codex | `~/.codex/AGENTS.md` | `INSTRUCTIONS.md` |
+
+No tool reads another tool's memory — the formats differ — so cross-tool memory is the
+`shared/` folder: `INSTRUCTIONS.md` ends with a fixed paragraph telling every assistant
+to read `shared/*.md` for durable facts about your work and to add a short Markdown
+file there when it learns one. Codex's own memory store is not synced: it keeps a git
+repository of its own inside, which cannot nest. Hermes keeps `SOUL.md` (an identity
+file, not instructions).
+
+### 4.1 Choose where it lives — `setup.sh --state`
+
+From a clone of this repo, on a terminal:
 
 ```bash
-gh repo create claude-state --private
+./setup.sh --state        # included in --all; --no-state skips it
+```
+
+It asks four things: where the store lives (Enter = `~/.agent-state`), which private
+remote syncs it (Enter = this machine only, still with history), which of the detected
+tools to include (Claude is always in), and whether Claude's per-project notes join.
+The answers go to `~/.config/agent-recipes/state.conf`, which the plugin's hooks, the
+`/sync-state` command and `setup.sh` all read, so they can never disagree about the
+directory. Flags do the same without questions: `--state-dir`, `--state-remote`,
+`--state-tools "claude goose"`; `--dry-run` shows the config and the links it would make.
+
+Without a clone, inside Claude Code: `/sync-state config dir=… remote=… tools=…`.
+
+### 4.2 The remote
+
+```bash
+gh repo create agent-state --private
 ```
 
 It must be private, on an account only you control, with two-factor authentication on.
-Whoever can write to it can change the instructions Claude follows on all your devices.
-
-Make sure git reaches it without asking anything — hooks cannot answer prompts:
+Whoever can write to it can change the instructions every tool follows on all your
+devices. Make sure git reaches it without asking anything — hooks cannot answer prompts:
 
 ```bash
-git ls-remote git@github.com:YOUR-USER/claude-state.git      # must not prompt
+git ls-remote git@github.com:YOUR-USER/agent-state.git      # must not prompt
 ```
 
-### 4.2 First device
+### 4.3 First device
 
-Inside Claude Code:
+`setup.sh --state` runs `init` for you; from inside Claude Code it is:
 
 ```text
-/sync-state init git@github.com:YOUR-USER/claude-state.git
+/sync-state init                      # uses the configured remote, or local-only
+/sync-state init git@github.com:YOUR-USER/agent-state.git
 ```
 
-Your existing `~/.claude/agent-memory/` and `~/.claude/CLAUDE.md` move into
-`~/.claude-state/` and are replaced by symlinks. Nothing else is touched.
+Your existing memory directories move into the store and are replaced by symlinks.
+`INSTRUCTIONS.md` is built from `~/.claude/CLAUDE.md`; a `.goosehints` or `AGENTS.md`
+that says something different is folded in under a `## From goose` / `## From codex`
+heading and the original kept in `~/.claude/.state-sync-backup/<timestamp>/`. Review
+the result once — it is now what every tool follows.
+
+**Coming from 0.5.0?** A `~/.agent-state` is moved to the configured location and its
+layout converted, history kept, links re-pointed. Nothing to do by hand.
 
 > **Known limit — Cowork.** Claude Code's docs say that Cowork sessions (the desktop
 > app) skip a `~/.claude/CLAUDE.md` that is a symlink. The terminal CLI honours it. On
 > a machine where you also use Cowork, keep a plain copy there or accept that Cowork
 > sessions do not see the synced file; agent memory is unaffected.
 
-### 4.3 Every other device
+### 4.4 Every other device
 
-The same command. If the device already has memory or a `CLAUDE.md` of its own, files
-that exist only there are added; where both sides have the same file the repository's
-version is used, and the device's old copy is kept in
-`~/.claude/.state-sync-backup/<timestamp>/`.
+`./setup.sh --state` (or `/sync-state init`) with the same remote. A tool that is not
+installed there is simply not linked; its folder rides along in the repo. If the device
+already has memory of its own, files that exist only there are added; where both sides
+have the same file the repository's version is used, and the device's old copy is kept
+in `~/.claude/.state-sync-backup/<timestamp>/`.
 
 **Check.**
 
@@ -374,29 +416,31 @@ version is used, and the device's old copy is kept in
 /sync-state status
 ```
 
-shows `state sync: ON`, both items `linked`, and the repository address.
+shows `state sync: ON`, the tools in play, one `linked` line per item, and the
+repository address (or `local-only`).
 
-### 4.4 Day to day
+### 4.5 Day to day
 
 Nothing to do.
 
 - **Session start:** local edits are committed, then the latest state is pulled. If
-  your `CLAUDE.md` changed on another device, Claude is told to re-read it.
+  the shared instructions changed on another device, Claude is told to re-read them. A
+  Claude project you opened for the first time is picked up at the next session start.
 - **Session end:** changes are committed and pushed in the background.
 - **Offline:** changes are committed locally and go out next time.
-- **Both devices edited the same file:** for Markdown (which is what memory is) both
-  sets of lines are kept. For any other file the device that syncs second wins.
+- **Both devices edited the same file:** Markdown and Goose's `.txt` categories keep
+  both sets of lines. For any other file the device that syncs second wins.
+- **Hermes:** its two memory files have hard size caps; after a merge pushes one over,
+  `status` warns and Hermes' next write would fail until you trim it.
 
 `/sync-state push` and `/sync-state pull` do it on demand — useful before closing a
 laptop.
 
-### 4.5 What is and is not synced
+### 4.6 What is never synced
 
-| Synced | Never synced |
-|--------|--------------|
-| `~/.claude/agent-memory/` | `settings.json`, `settings.local.json` |
-| `~/.claude/CLAUDE.md` | credentials and tokens |
-| | `plugins/`, `projects/` (transcripts), everything else |
+Settings of any tool, credentials and tokens, sessions and transcripts, Codex's memory
+store, project-level memory (`.claude/agent-memory/` inside a repository travels with
+that repository if you commit it).
 
 Files that look like secrets — by name (`.env`, `id_rsa`, `*.pem`, …) or by content (a
 private-key header, an AWS, GitHub, Anthropic or Slack token) — are held back, and
@@ -404,21 +448,21 @@ private-key header, an AWS, GitHub, Anthropic or Slack token) — are held back,
 everything, so look at what the repository contains from time to time:
 
 ```bash
-git -C ~/.claude-state log --stat -5
+git -C ~/.agent-state log --stat -5
 ```
 
-Project-level memory (`.claude/agent-memory/` inside a repository) is not part of this.
-It travels with that repository if you commit it.
+The store now also carries Hermes' `USER.md` (a profile of you) — one more reason the
+repository stays private.
 
-### 4.6 Turn it off on a device
+### 4.7 Turn it off on a device
 
 ```text
 /sync-state off
 ```
 
-The symlinks become ordinary files again, with their current content, and this device
-stops syncing. The repository and `~/.claude-state/` are left alone;
-`/sync-state init <git-url>` turns sync back on.
+Every link becomes an ordinary file or directory again, with its current content, and
+this device stops syncing. The store is left alone; `/sync-state init` turns sync back
+on. `./setup.sh --uninstall` does the same and removes `state.conf`.
 
 ---
 
@@ -519,9 +563,9 @@ works but is marked deprecated.)
 | What did the notifier do? | `~/.claude/plugins/data/agent-recipes-agent-recipes/notify/notify.log` | — |
 | The guard stopped something you wanted | The reason in the message | Run it yourself (`! command` in the prompt), or rephrase. Do not turn the guard off for one command |
 | The guard seems to run twice | Old absolute-path hook in `settings.json` | `/autonomous-mode on` once |
-| Sync is not happening | `/sync-state status`, then `~/.claude-state/.sync.log` | `FETCH FAILED`: network or credentials — `git -C ~/.claude-state fetch` must work without a prompt |
+| Sync is not happening | `/sync-state status`, then `~/.agent-state/.sync.log` | `FETCH FAILED`: network or credentials — `git -C ~/.agent-state fetch` must work without a prompt |
 | A memory file is missing on other devices | `/sync-state status` lists it as held back | Remove the secret from it, or rename it if only the name looked like one; it syncs next time |
-| `REBASE FAILED` in the sync log | `git -C ~/.claude-state status` | `git -C ~/.claude-state pull --rebase`, resolve the conflict, `git rebase --continue`, then `/sync-state push` |
+| `REBASE FAILED` in the sync log | `git -C ~/.agent-state status` | `git -C ~/.agent-state pull --rebase`, resolve the conflict, `git rebase --continue`, then `/sync-state push` |
 | A device has an old `CLAUDE.md` | Did a session start since the change? | `/sync-state pull` |
 | A plugin update changed nothing | `claude plugin list` | `claude plugin marketplace update agent-recipes`, `claude plugin update agent-recipes@agent-recipes`, restart |
 
@@ -532,7 +576,7 @@ works but is marked deprecated.)
 In this order:
 
 1. `/autonomous-mode off` — while the plugin is still installed.
-2. `/sync-state off` on each device. Delete `~/.claude-state/` and the repository if you
+2. `/sync-state off` on each device. Delete `~/.agent-state/` and the repository if you
    no longer want them.
 3. `echo '{"notify_enabled":"false"}' | claude plugin configure agent-recipes@agent-recipes --values-stdin`
 4. Stop the daemon: `systemctl --user disable --now signal-cli` (Ubuntu) or
@@ -563,14 +607,14 @@ In this order:
 | Command | Does |
 |---------|------|
 | `/notify-test` | Sends a test message with your current options |
-| `/sync-state init <git-url>` · `status` · `pull` · `push` · `off` | Cross-device sync |
+| `/sync-state init [git-url]` · `status` · `pull` · `push` · `off` · `config …` | Cross-device, cross-tool sync of memory and instructions |
 | `/autonomous-mode on` · `off` · `status` `[--project]` | Broad-but-guarded permissions |
 
 **Where things live**
 
 | Path | What |
 |------|------|
-| `~/.claude-state/` | The synced repository; `.sync.log` inside it |
+| `~/.agent-state/` (or your `STATE_DIR`) | The state store; `.sync.log` inside it; `~/.config/agent-recipes/state.conf` says where it is |
 | `~/.claude/.state-sync-backup/` | Copies set aside when a device joined |
 | `~/.claude/plugins/data/agent-recipes-agent-recipes/notify/` | Notifier state and `notify.log` |
 | `~/.local/share/signal-cli/` | signal-cli's account data — treat it like a password |

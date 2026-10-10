@@ -221,7 +221,7 @@ troubleshooting.
 | Command | Does |
 |---------|------|
 | `/notify-test` | Sends a test Signal message through the local signal-cli daemon with your current options; reports `OK  sent` or `FAIL <why>` |
-| `/sync-state init <git-url>` · `status` · `pull` · `push` · `off` | Keeps `~/.claude/agent-memory/` and `~/.claude/CLAUDE.md` in a private git repo that every device pulls at session start and pushes at session end |
+| `/sync-state init [git-url]` · `status` · `pull` · `push` · `off` · `config …` | Keeps agent memory and instructions for Claude Code, Goose, Hermes and Codex in one private git repo (`~/.agent-state`, chosen by `setup.sh --state`) that every device pulls at session start and pushes at session end; one shared `INSTRUCTIONS.md` for all tools |
 
 Both are off until configured. Options (`/plugin configure agent-recipes@agent-recipes`):
 `guard_mode`, `notify_enabled`, `notify_recipient`, `notify_signal_rpc_url`,
