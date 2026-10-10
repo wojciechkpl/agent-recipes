@@ -42,6 +42,19 @@
 #      later device gets the repo's version and keeps a backup
 #  17. wiring — plugin.json at 0.6.0, /sync-state documents `config`
 #
+# Asserts (phase 5 review findings; numbered as in the review):
+#  R1. `config dir=` stores an absolute path (~ expanded, relative resolved against
+#      $PWD) and rejects an empty value
+#  R2. a phase-4 device with no state.conf keeps working: status/push use
+#      ~/.claude-state, init still migrates it
+#  R3. init with a different remote refuses WITHOUT moving the legacy store
+#  R4. after off, edits to CLAUDE.md, .goosehints and AGENTS.md all survive init
+#  R6. the layout conversion moves an untracked root CLAUDE.md too
+#  R7. off unlinks every tool that is linked, whatever STATE_TOOLS says now
+#  R8. init again with the remote ahead rebases and pushes (exit 0, nothing lost)
+#  R9. pull during a fresh rebase commits nothing; the edit is committed once the
+#      rebase has aged out and been aborted
+#
 # Run: tests/test_state_sync.sh   (exit 0 = pass, non-zero = fail)
 set -euo pipefail
 
@@ -637,6 +650,162 @@ check "off: auto-memory dirs are plain dirs with their notes" \
 check "off: no symlink into the store is left behind"    bash -c "! find '$D/.claude' '$D/.config/goose' '$D/.hermes' '$D/.codex' -type l | grep -q ."
 check "off: the repo is kept"                            test -d "$SD/.git"
 check "off: status reports OFF"                          says 'state sync: OFF' dev "$D" status
+
+# ═════════════════════════════════════════════════════════════════════════════════════
+# Phase 5 review findings.
+# ═════════════════════════════════════════════════════════════════════════════════════
+# conf_is <home> <bash test on STATE_* after sourcing that home's state.conf>
+conf_is() { bash -c ". '$1/.config/agent-recipes/state.conf' 2>/dev/null && [[ $2 ]]"; }
+# legacy_home <home> <tag> [bare-remote-to-create]: a phase-4 device — ~/.claude-state with
+# the old layout (agent-memory/ and CLAUDE.md at the root, committed), the native paths
+# linked into it, and NO state.conf.
+legacy_home() {
+    local h="$1" tag="$2" remote="${3:-}" s="$1/.claude-state"
+    mkdir -p "$h/.claude" "$s/agent-memory/a"
+    printf '%s memory\n' "$tag" > "$s/agent-memory/a/MEMORY.md"
+    printf '%s rules.\n'  "$tag" > "$s/CLAUDE.md"
+    printf '*.md merge=union\n' > "$s/.gitattributes"
+    printf '.sync.log\n'        > "$s/.gitignore"
+    git -C "$s" init -q
+    git -C "$s" add -A
+    git -C "$s" -c user.name=t -c user.email=t@t commit -q -m "phase 4 state"
+    if [[ -n "$remote" ]]; then
+        git init -q --bare "$remote"
+        git -C "$s" remote add origin "$remote"
+        git -C "$s" push -q -u origin HEAD
+    fi
+    ln -s "$s/agent-memory" "$h/.claude/agent-memory"
+    ln -s "$s/CLAUDE.md"    "$h/.claude/CLAUDE.md"
+}
+
+echo "── review 1: config normalises the store path ──"
+# A path typed by a user — "~/store", "relative/store" — must be stored absolute, or the
+# hooks (which run from any cwd) and setup.sh would disagree about where the store is.
+L2="$workdir/homeL2"; mkdir -p "$L2/.claude" "$workdir/rel"
+check "config 'dir=~/store' exits 0"                        quiet dev "$L2" config 'dir=~/store'
+check "...~ is expanded to \$HOME in state.conf"            conf_is "$L2" "\$STATE_DIR == '$L2/store'"
+( cd "$workdir/rel" && dev "$L2" config dir=relative/store ) >/dev/null 2>&1 || true
+conf_dir() { ( . "$1/.config/agent-recipes/state.conf" 2>/dev/null; rp "${STATE_DIR:-/nonexistent}" ); }   # STATE_DIR, resolved
+check "config dir=relative/store is resolved against \$PWD" test "$(conf_dir "$L2")" = "$(rp "$workdir/rel/relative/store")"
+check "config dir= (empty) is rejected"                     fails dev "$L2" config dir=
+check "...and the file is unchanged"                        test "$(conf_dir "$L2")" = "$(rp "$workdir/rel/relative/store")"
+
+echo "── review 2: a phase-4 device with no state.conf keeps working ──"
+# No file, no ~/.agent-state, but a ~/.claude-state store with links into it: the hooks
+# and status must find THAT store; init still migrates it to the default location.
+G="$workdir/homeG"; legacy_home "$G" G "$workdir/remote6.git"
+check "legacy, no conf: status reports ON"                  says 'state sync: ON' dev "$G" status
+check "legacy, no conf: status names ~/.claude-state"       says "$G/.claude-state" dev "$G" status
+printf 'edit on legacy\n' >> "$G/.claude/agent-memory/a/MEMORY.md"
+check "legacy, no conf: push exits 0"                       dev "$G" push
+check "legacy, no conf: push committed into ~/.claude-state" says 'edit on legacy' in_rev "$G/.claude-state" HEAD agent-memory/a/MEMORY.md
+check "legacy, no conf: nothing was created at ~/.agent-state" test ! -e "$G/.agent-state"
+check "legacy, no conf: init (no url, existing origin) exits 0" quiet dev "$G" init
+check "...it migrated to ~/.agent-state"                    test -d "$G/.agent-state/.git"
+check "...~/.claude-state is gone"                          test ! -e "$G/.claude-state"
+check "...CLAUDE.md -> INSTRUCTIONS.md in the new store"    links_to "$G/.claude/CLAUDE.md" "$G/.agent-state/INSTRUCTIONS.md"
+check "...and the edit reached the existing origin"         says 'edit on legacy' blob "$workdir/remote6.git" HEAD claude/agent-memory/a/MEMORY.md
+
+echo "── review 3: a refused init never moves the legacy store ──"
+G2="$workdir/homeG2"; legacy_home "$G2" G2 "$workdir/remote7.git"
+rc=0; dev "$G2" init "$workdir/other.git" >"$workdir/G2.out" 2>&1 || rc=$?
+check "legacy + init <other-url>: exits non-zero"           test "$rc" -ne 0
+check "...says which repository it already syncs with"      grep -q 'already syncs with' "$workdir/G2.out"
+check "...~/.claude-state is still in place"                test -d "$G2/.claude-state/.git"
+check "...nothing was created at ~/.agent-state"            test ! -e "$G2/.agent-state"
+check "...CLAUDE.md link still resolves"                    grep -q 'G2 rules' "$G2/.claude/CLAUDE.md"
+check "...agent-memory link still resolves"                 grep -q 'G2 memory' "$G2/.claude/agent-memory/a/MEMORY.md"
+
+echo "── review 4: edits to EVERY instruction copy after off survive init ──"
+# After off, CLAUDE.md, .goosehints and AGENTS.md are three plain copies of the same
+# text. A user may edit any of them before turning sync back on; init must keep every
+# edit (a later one may be folded under a '## From <tool>' heading) — never let the
+# last copy adopted overwrite the others. (D is first brought level with the remote, so
+# this section depends only on the merge, not on review 8.)
+git -C "$SD" pull -q --rebase >/dev/null 2>&1 || true
+printf 'Claude edit after off.\n' >> "$D/.claude/CLAUDE.md"
+printf 'Goose edit after off.\n'  >> "$D/.config/goose/.goosehints"
+printf 'Codex edit after off.\n'  >> "$D/.codex/AGENTS.md"
+check "init after three divergent edits exits 0"            quiet dev "$D" init "$workdir/remote5.git"
+check "INSTRUCTIONS.md keeps the CLAUDE.md edit"            grep -q 'Claude edit after off' "$INS_D"
+check "INSTRUCTIONS.md keeps the .goosehints edit"          grep -q 'Goose edit after off' "$INS_D"
+check "INSTRUCTIONS.md keeps the AGENTS.md edit"            grep -q 'Codex edit after off' "$INS_D"
+check "...and the original body"                            grep -q 'Claude rules' "$INS_D"
+check "all three native files are links again"              bash -c "[[ -L '$D/.claude/CLAUDE.md' && -L '$D/.config/goose/.goosehints' && -L '$D/.codex/AGENTS.md' ]]"
+check "the merged file is committed"                        says 'Goose edit after off' blob "$SD" HEAD INSTRUCTIONS.md
+
+echo "── review 6: layout conversion moves an UNTRACKED root CLAUDE.md too ──"
+# A phase-4 user whose CLAUDE.md was never committed (held back, or written after the
+# last push) must not lose it: the conversion is a file move, not only a 'git mv'.
+U="$workdir/homeU"; legacy_home "$U" U
+git -C "$U/.claude-state" rm -q --cached CLAUDE.md
+git -C "$U/.claude-state" -c user.name=t -c user.email=t@t commit -q -m "CLAUDE.md untracked"
+printf 'U rules, never committed.\n' > "$U/.claude-state/CLAUDE.md"
+check "setup: CLAUDE.md is untracked in the legacy store"   not tree_has "$U/.claude-state" CLAUDE.md
+git init -q --bare "$workdir/remote9.git"
+check "init exits 0"                                        quiet dev "$U" init "$workdir/remote9.git"
+check "INSTRUCTIONS.md holds the untracked CLAUDE.md's text" grep -q 'never committed' "$U/.agent-state/INSTRUCTIONS.md"
+check "...and it is committed"                              says 'never committed' blob "$U/.agent-state" HEAD INSTRUCTIONS.md
+check "no CLAUDE.md remains at the store root"              test ! -e "$U/.agent-state/CLAUDE.md"
+check "the native CLAUDE.md reads it through the link"      grep -q 'never committed' "$U/.claude/CLAUDE.md"
+
+echo "── review 7: off unlinks every tool, whatever STATE_TOOLS says now ──"
+# A link made while goose was active must be undone even if the user has since dropped
+# goose from STATE_TOOLS: off looks at what IS linked into the store, not at the list.
+T="$workdir/homeT"; mkdir -p "$T/.claude" "$T/.config/goose/memory"
+printf 'T rules.\n'   > "$T/.claude/CLAUDE.md"
+printf 'T goose mem\n' > "$T/.config/goose/memory/t.txt"
+check "setup: init with goose detected exits 0"             quiet dev "$T" init
+check "setup: .goosehints is linked"                        test -L "$T/.config/goose/.goosehints"
+check "config tools=claude exits 0"                         quiet dev "$T" config tools=claude
+check "off exits 0"                                         quiet dev "$T" off
+check "off: .goosehints is a plain file"                    bash -c "[[ -f '$T/.config/goose/.goosehints' && ! -L '$T/.config/goose/.goosehints' ]]"
+check "off: goose/memory is a plain dir with its content"   bash -c "[[ -d '$T/.config/goose/memory' && ! -L '$T/.config/goose/memory' ]] && grep -q 'T goose mem' '$T/.config/goose/memory/t.txt'"
+check "off: no link into the store remains"                 bash -c "! find '$T/.claude' '$T/.config/goose' -type l | grep -q ."
+
+echo "── review 8: init again while the remote moved ahead ──"
+X="$workdir/homeX"; Y="$workdir/homeY"
+mkdir -p "$X/.claude/agent-memory/m" "$Y/.claude"
+printf 'x memory\n' > "$X/.claude/agent-memory/m/MEMORY.md"
+printf 'X rules.\n' > "$X/.claude/CLAUDE.md"
+git init -q --bare "$workdir/remote8.git"
+quiet dev "$X" init "$workdir/remote8.git" || true
+quiet dev "$Y" init "$workdir/remote8.git" || true
+printf 'from Y\n' >> "$Y/.claude/agent-memory/m/MEMORY.md"
+dev "$Y" push
+printf 'x local before re-init\n' > "$X/.claude/agent-memory/m/local.md"
+rc=0; dev "$X" init "$workdir/remote8.git" >"$workdir/X-reinit.out" 2>&1 || rc=$?
+check "re-init with the remote ahead exits 0"               test "$rc" -eq 0
+check "...X received Y's change"                            grep -q 'from Y' "$X/.claude/agent-memory/m/MEMORY.md"
+check "...X's local edit reached the remote"                says 'x local before re-init' blob "$workdir/remote8.git" HEAD claude/agent-memory/m/local.md
+check "...X has nothing unpushed"                           bash -c "[[ -z \"\$(git -C '$X/.agent-state' log '@{u}..HEAD' --oneline 2>&1)\" ]]"
+check "...X is not left mid-rebase"                         bash -c "[[ ! -d '$X/.agent-state/.git/rebase-merge' && ! -d '$X/.agent-state/.git/rebase-apply' ]]"
+
+echo "── review 9: pull during a FRESH rebase commits nothing ──"
+# A rebase younger than two minutes may belong to a git that is still running. Leaving
+# it alone also means NOT committing on top of it: a commit made on the detached HEAD of
+# a rebase is thrown away when that rebase is later aborted, and the edit with it.
+printf '{"v": 0}\n' > "$X/.claude/agent-memory/m/data.json"
+dev "$X" push; dev "$Y" pull
+printf '{"v": "X2"}\n' > "$X/.claude/agent-memory/m/data.json"
+dev "$X" push
+printf '{"v": "Y2"}\n' > "$Y/.claude/agent-memory/m/data.json"
+git -C "$Y/.agent-state" add -A
+git -C "$Y/.agent-state" -c user.name=t -c user.email=t@t commit -q -m "local edit"
+git -C "$Y/.agent-state" pull --rebase --quiet >/dev/null 2>&1 || true   # stops on the conflict
+check "setup: Y is stuck mid-rebase"                        test -d "$Y/.agent-state/.git/rebase-merge"
+printf 'written during the rebase\n' > "$Y/.claude/agent-memory/m/fresh.md"
+head_before="$(git -C "$Y/.agent-state" rev-parse HEAD)"
+rc=0; dev "$Y" pull >/dev/null 2>&1 || rc=$?
+check "pull during a fresh rebase exits 0"                  test "$rc" -eq 0
+check "...commits nothing (HEAD unchanged)"                 test "$(git -C "$Y/.agent-state" rev-parse HEAD)" = "$head_before"
+check "...the edit is still in the working tree"            grep -q 'written during the rebase' "$Y/.claude/agent-memory/m/fresh.md"
+check "...the rebase is still in progress"                  test -d "$Y/.agent-state/.git/rebase-merge"
+touch -t 202001010000 "$Y/.agent-state/.git/rebase-merge"
+check "once the rebase has aged out, pull exits 0"          quiet dev "$Y" pull
+check "...the old rebase was aborted"                       test ! -d "$Y/.agent-state/.git/rebase-merge"
+check "...and the edit is now committed"                    says 'written during the rebase' blob "$Y/.agent-state" HEAD claude/agent-memory/m/fresh.md
+check "...and still in the working tree"                    grep -q 'written during the rebase' "$Y/.claude/agent-memory/m/fresh.md"
 
 echo "── /sync-state command ──"
 CMD="${REPO}/claude/commands/sync-state.md"

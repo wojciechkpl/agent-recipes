@@ -44,7 +44,8 @@ detect_tools() {
     done
     echo "$tools"
 }
-active_tools() { echo "${STATE_TOOLS:-$(detect_tools)}"; }
+ALL_TOOLS=0   # 1 = every tool counts as active (used by `off`: unlink whatever is linked)
+active_tools() { if (( ALL_TOOLS )); then echo "claude goose hermes codex"; else echo "${STATE_TOOLS:-$(detect_tools)}"; fi; }
 tool_active()  { case " $(active_tools) " in *" $1 "*) return 0 ;; esac; return 1; }
 
 # items: tool<TAB>kind<TAB>native path<TAB>store path, one line per item of each active tool.
@@ -118,13 +119,36 @@ unlink_foreign() {
     return 0
 }
 
-# adopt <native path> <store path> <dir|file>: move/merge the local item into the
-# store, then leave a symlink. Rules when both sides exist: a directory merges (repo
-# wins on collisions, local-only files added); a file edited after `off` wins (the off
-# marker is older than the file); identical content needs no decision; otherwise the
-# repo's version replaces the local one. The replaced copy is always backed up.
+# local_wins <native path> <store path> <tool>: a file edited after `off` goes into
+# the store. The first such file replaces the store's copy; a SECOND one in the same
+# run (another tool's instruction file, also edited while off) must not overwrite the
+# first, so its lines that the store lacks are folded in under a heading instead.
+ADOPTED_LOCAL=" "
+local_wins() {
+    local local_path="$1" item="$2" tool="$3" repo_path="$SYNC_DIR/$2" extra
+    case "$ADOPTED_LOCAL" in
+        *" $item "*)
+            extra="$(grep -vxFf "$repo_path" "$local_path" || true)"
+            if [[ -n "$extra" ]]; then
+                [[ -n "$(tail -c1 "$repo_path")" ]] && echo >> "$repo_path"
+                printf '\n## From %s (edited while sync was off)\n\n%s\n' "$tool" "$extra" >> "$repo_path"
+            fi
+            rm "$local_path"
+            echo "  folded this device's edits to $(basename "$local_path") into $item under '## From $tool'" ;;
+        *)
+            cp "$local_path" "$repo_path"; rm "$local_path"
+            ADOPTED_LOCAL="$ADOPTED_LOCAL$item "
+            echo "  kept this device's newer $item and replaced the repo's copy (previous version: git history)" ;;
+    esac
+}
+
+# adopt <native path> <store path> <dir|file> [tool]: move/merge the local item into
+# the store, then leave a symlink. Rules when both sides exist: a directory merges
+# (repo wins on collisions, local-only files added); a file edited after `off` wins
+# (the off marker is older than the file); identical content needs no decision;
+# otherwise the repo's version replaces the local one. Replaced copies are backed up.
 adopt() {
-    local local_path="$1" item="$2" kind="$3" repo_path="$SYNC_DIR/$2" backup
+    local local_path="$1" item="$2" kind="$3" tool="${4:-claude}" repo_path="$SYNC_DIR/$2" backup
     if [[ -L "$local_path" ]] && ! unlink_foreign "$local_path"; then
         ln -sfn "$repo_path" "$local_path"; return 0
     fi
@@ -138,8 +162,7 @@ adopt() {
         elif [[ -e "$repo_path" ]] && cmp -s "$local_path" "$repo_path"; then
             rm "$local_path"
         elif [[ -e "$repo_path" && -e "$OFF_MARK" && ! "$OFF_MARK" -nt "$local_path" ]]; then
-            cp "$local_path" "$repo_path"; rm "$local_path"
-            echo "  kept this device's newer $item and replaced the repo's copy (previous version: git history)"
+            local_wins "$local_path" "$item" "$tool"
         elif [[ -e "$repo_path" ]]; then
             backup="$(backup_path "$item" "$(basename "$local_path")")"
             mv "$local_path" "$backup"
@@ -156,7 +179,7 @@ adopt() {
 
 adopt_items() {
     local t k n r
-    while IFS=$'\t' read -r t k n r; do adopt "$n" "$r" "$k"; done < <(items)
+    while IFS=$'\t' read -r t k n r; do adopt "$n" "$r" "$k" "$t"; done < <(items)
 }
 adopt_auto_memory() {
     local t k n r
@@ -236,15 +259,21 @@ hermes_cap_warnings() {
     return 0
 }
 
-# unlink_all: every link into the store becomes a plain copy (used by `off`).
+# unlink_all: every link into the store becomes a plain copy (used by `off`) — for
+# every tool, whatever STATE_TOOLS says now: a tool dropped from the list after it
+# was linked must not keep a link into a store that is being switched off.
 unlink_all() {
     local t k n r
+    ALL_TOOLS=1
+    local target
     while IFS=$'\t' read -r t k n r; do
         [[ -L "$n" ]] && in_store "$n" || continue
+        target="$(realpath_of "$n")"      # the link's own target: right in any layout
         rm "$n"
-        [[ -e "$SYNC_DIR/$r" ]] && cp -R "$SYNC_DIR/$r" "$n"
+        [[ -e "$target" ]] && cp -R "$target" "$n"
         echo "  unlinked $n (plain copy restored)"
     done < <(items; auto_memory_items all)
+    ALL_TOOLS=0
 }
 
 # list_items: human-readable plan of what init would link (setup.sh --dry-run).

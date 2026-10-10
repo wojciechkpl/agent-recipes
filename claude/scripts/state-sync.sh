@@ -54,9 +54,31 @@ load_config() {
 }
 load_config
 : "${STATE_DIR:=}" "${STATE_REMOTE:=}" "${STATE_TOOLS:=}" "${STATE_CLAUDE_AUTO_MEMORY:=yes}"
-SYNC_DIR="${STATE_SYNC_DIR:-${STATE_DIR:-$HOME/.agent-state}}"
-LOG="$SYNC_DIR/.sync.log"
-OFF_MARK="$SYNC_DIR/.git/state-sync-off"   # inside .git: per device, never committed
+DEFAULT_DIR="$HOME/.agent-state"
+SYNC_DIR="${STATE_SYNC_DIR:-${STATE_DIR:-$DEFAULT_DIR}}"
+# A phase-4 device (store at ~/.claude-state, no state.conf, nothing at the default)
+# keeps working as it is; `init` moves it to the default location.
+LEGACY_FALLBACK=0
+if [[ -z "${STATE_SYNC_DIR:-}$STATE_DIR" && ! -d "$SYNC_DIR/.git" && -d "$LEGACY_DIR/.git" ]]; then
+    SYNC_DIR="$LEGACY_DIR"; LEGACY_FALLBACK=1
+fi
+set_store_paths() {
+    LOG="$SYNC_DIR/.sync.log"
+    OFF_MARK="$SYNC_DIR/.git/state-sync-off"   # inside .git: per device, never committed
+}
+set_store_paths
+
+# absolute_path <path>: ~ and ~/x expand to the home directory, a relative path is
+# taken from the current directory. A link made from a relative store path would
+# dangle from every other directory.
+absolute_path() {
+    case "$1" in
+        \~)    echo "$HOME" ;;
+        \~/*)  echo "$HOME/${1#\~/}" ;;
+        /*)    echo "$1" ;;
+        *)     echo "$PWD/$1" ;;
+    esac
+}
 
 # File names that must never be committed, and high-signal secret shapes in content.
 SECRET_NAMES='(^|/)(\.env(\..*)?|id_(rsa|ed25519|ecdsa|dsa)|.*\.(pem|ppk|p12|pfx)|.*credentials.*|settings.*\.json)$'
@@ -156,10 +178,20 @@ sync_remote() {
 
 instructions_rev() { g rev-parse -q --verify "HEAD:$INSTRUCTIONS" 2>/dev/null || true; }
 
+# commit_now: adopt new project memory and commit — unless a FRESH rebase is running
+# (heal leaves those alone): a commit made then would land on the rebase's detached
+# HEAD and vanish with its abort.
+commit_now() {
+    heal
+    rebase_in_progress && return 0
+    adopt_auto_memory
+    commit_local
+}
+
 cmd_pull() {
     active || return 0
     local before
-    { heal; adopt_auto_memory; commit_local; } >>"$LOG" 2>&1 || true
+    commit_now >>"$LOG" 2>&1 || true
     before="$(instructions_rev)"   # after the local commit: only a REMOTE change counts
     pull_rebase >>"$LOG" 2>&1 || true
     if [[ "$(instructions_rev)" != "$before" ]]; then
@@ -169,7 +201,7 @@ cmd_pull() {
 
 cmd_push() {
     active || return 0
-    { heal; adopt_auto_memory; commit_local; } >>"$LOG" 2>&1 || true
+    commit_now >>"$LOG" 2>&1 || true
     if [[ "${STATE_SYNC_FOREGROUND:-}" == 1 ]]; then
         sync_remote || true
     else
@@ -190,23 +222,38 @@ write_repo_files() {
 
 # A phase-4 store at ~/.claude-state moves to the configured location when that does
 # not exist yet, and its root-level layout becomes the per-tool one (history kept).
+# migrate_legacy_store <url>: the move happens only after the URL check that `init`
+# would make anyway — a refused init must leave the old store and its links intact.
 migrate_legacy_store() {
+    local url="$1" legacy_origin
     if ! initialized && [[ "$SYNC_DIR" != "$LEGACY_DIR" && -d "$LEGACY_DIR/.git" && ! -e "$SYNC_DIR" ]]; then
+        legacy_origin="$(git -C "$LEGACY_DIR" remote get-url origin 2>/dev/null || true)"
+        if [[ -n "$url" && -n "$legacy_origin" && "$legacy_origin" != "$url" ]]; then
+            echo "error: $LEGACY_DIR already syncs with $legacy_origin; remove it first to use another repository" >&2
+            exit 1
+        fi
         mkdir -p "$(dirname "$SYNC_DIR")"
         mv "$LEGACY_DIR" "$SYNC_DIR"
         echo "  moved $LEGACY_DIR -> $SYNC_DIR"
     fi
 }
+# move_in_store <from> <to>: git mv when tracked, a plain mv otherwise (a held-back,
+# untracked file must move too).
+move_in_store() {
+    mkdir -p "$(dirname "$SYNC_DIR/$2")"
+    g mv -k "$1" "$2" 2>/dev/null || true
+    [[ -e "$SYNC_DIR/$1" ]] && mv "$SYNC_DIR/$1" "$SYNC_DIR/$2"
+    return 0
+}
 convert_legacy_layout() {
     local moved=0
     initialized || return 0
     if [[ -e "$SYNC_DIR/agent-memory" ]]; then
-        mkdir -p "$SYNC_DIR/claude"
-        g mv -k agent-memory claude/agent-memory 2>/dev/null || mv "$SYNC_DIR/agent-memory" "$SYNC_DIR/claude/agent-memory"
+        move_in_store agent-memory claude/agent-memory
         moved=1
     fi
     if [[ -e "$SYNC_DIR/CLAUDE.md" ]]; then
-        g mv -k CLAUDE.md "$INSTRUCTIONS" 2>/dev/null || mv "$SYNC_DIR/CLAUDE.md" "$SYNC_DIR/$INSTRUCTIONS"
+        move_in_store CLAUDE.md "$INSTRUCTIONS"
         moved=1
     fi
     if (( moved )); then
@@ -218,7 +265,10 @@ convert_legacy_layout() {
 cmd_init() {
     local url="${1:-$STATE_REMOTE}"
     mkdir -p "$CLAUDE_HOME"
-    migrate_legacy_store
+    if (( LEGACY_FALLBACK )); then       # a phase-4 device: init moves the store
+        SYNC_DIR="$DEFAULT_DIR"; set_store_paths
+    fi
+    migrate_legacy_store "$url"
     if ! initialized; then
         [[ ! -e "$SYNC_DIR" ]] || { echo "error: $SYNC_DIR exists and is not a git repo" >&2; exit 1; }
         if [[ -n "$url" ]]; then
@@ -236,6 +286,7 @@ cmd_init() {
     fi
     convert_legacy_layout
     write_repo_files
+    pull_rebase >>"$LOG" 2>&1 || true   # an existing store: level with the remote first
     build_instructions
     adopt_items
     adopt_auto_memory
@@ -244,6 +295,7 @@ cmd_init() {
     rm -f "$OFF_MARK"                 # after adopt(): it dates this device's edits
     commit_local
     if has_origin; then
+        pull_rebase >>"$LOG" 2>&1 || true
         g push -q -u origin HEAD
         echo "state sync is ON: $SYNC_DIR -> $(origin_url)"
     else
@@ -267,6 +319,9 @@ cmd_status() {
     fi
     if has_origin; then echo "state sync: ON  $SYNC_DIR -> $(origin_url)"
     else echo "state sync: ON  $SYNC_DIR (local-only, no remote)"; fi
+    if (( LEGACY_FALLBACK )); then
+        echo "  note: this is the phase 4 location; 'init' moves the store to $DEFAULT_DIR and converts its layout"
+    fi
     echo "tools: $(active_tools)"
     while IFS=$'\t' read -r _ k n r; do
         if [[ -L "$n" ]]; then echo "  linked    $r  <- $n"; else echo "  missing   $r  <- $n (run init again)"; fi
@@ -290,7 +345,9 @@ cmd_config() {
     for kv in "$@"; do
         k="${kv%%=*}"; v="${kv#*=}"
         case "$k" in
-            dir)    dir="$v" ;;
+            dir)
+                [[ -n "$v" ]] || { echo "error: dir= needs a path" >&2; return 2; }
+                dir="$(absolute_path "$v")" ;;
             remote) remote="$v" ;;
             tools)  tools="$v" ;;
             auto_memory)

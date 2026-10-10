@@ -428,26 +428,45 @@ yes_no() {
     case "$answer" in [Yy]*) echo y ;; *) echo n ;; esac
 }
 
+# conf_get <KEY>: the value already in state.conf (a re-run keeps earlier answers).
+conf_get() { "$STATE_SYNC" config 2>/dev/null | sed -n "s/^$1=\"\(.*\)\"\$/\1/p"; }
+
+# expand_home <path>: ~ and ~/x become absolute; a relative path is taken from here.
+expand_home() {
+    case "$1" in
+        \~)    echo "$HOME" ;;
+        \~/*)  echo "$HOME/${1#\~/}" ;;
+        /*)    echo "$1" ;;
+        *)     echo "$PWD/$1" ;;
+    esac
+}
+
 setup_state() {
-    local detected dir remote tools auto t
+    local detected dir remote tools auto t answer had_conf=false
     detected="$("$STATE_SYNC" detect)"
-    dir="${STATE_DIR_OPT:-${HOME}/.agent-state}"
-    remote="$STATE_REMOTE_OPT"
-    tools="${STATE_TOOLS_OPT:-$detected}"
-    auto=yes
+    [[ -f "$STATE_CONF" ]] && had_conf=true
+    # Precedence: flag, then what state.conf already says, then the default.
+    dir="${STATE_DIR_OPT:-$(conf_get STATE_DIR)}"; [[ -n "$dir" ]] || dir="${HOME}/.agent-state"
+    dir="$(expand_home "$dir")"
+    remote="${STATE_REMOTE_OPT:-$(conf_get STATE_REMOTE)}"
+    tools="${STATE_TOOLS_OPT:-$(conf_get STATE_TOOLS)}"; [[ -n "$tools" ]] || tools="$detected"
+    auto="$(conf_get STATE_CLAUDE_AUTO_MEMORY)"; [[ -n "$auto" ]] || auto=yes
     if state_interactive; then
         printf "\n${BOLD}State store${RESET} — one private git repo for agent memory and instructions.\n" >&2
         printf "Detected tools: %s\n\n" "$detected" >&2
-        [[ -n "$STATE_DIR_OPT" ]]    || dir="$(ask "Where should agent memory and instructions live? [$dir] " "$dir")"
-        [[ -n "$STATE_REMOTE_OPT" ]] || remote="$(ask "Private git remote to sync it (Enter = this machine only): " "")"
-        if [[ -z "$STATE_TOOLS_OPT" ]]; then
+        if [[ -z "$STATE_DIR_OPT" ]]; then
+            answer="$(ask "Where should agent memory and instructions live? [$dir] " "$dir")"
+            dir="$(expand_home "$answer")"
+        fi
+        [[ -n "$STATE_REMOTE_OPT" ]] || remote="$(ask "Private git remote to sync it (Enter = ${remote:-this machine only}): " "$remote")"
+        if [[ -z "$STATE_TOOLS_OPT" ]] && ! $had_conf; then
             tools=claude
             for t in $detected; do
                 [[ "$t" == claude ]] && continue
                 [[ "$(yes_no "Include $t? [Y/n] " y)" == y ]] && tools="$tools $t"
             done
         fi
-        [[ "$(yes_no "Also sync Claude's per-project auto memory (~/.claude/projects/*/memory)? [Y/n] " y)" == y ]] || auto=no
+        [[ "$(yes_no "Also sync Claude's per-project auto memory (~/.claude/projects/*/memory)? [$( [[ "$auto" == yes ]] && echo Y/n || echo y/N )] " "$auto")" == y ]] && auto=yes || auto=no
         printf "\n" >&2
     fi
 

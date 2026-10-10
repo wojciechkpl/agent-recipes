@@ -28,6 +28,12 @@
 #   6. --all implies --state; --no-state turns it off
 #   7. --uninstall runs `off` (links become plain copies, repo kept) and removes
 #      state.conf; --uninstall --dry-run changes nothing; no state at all is fine
+#  Review findings (numbered as in the review):
+#  R1. an interactive "~/store" answer is stored absolute and the store created there
+#  R2. --uninstall on a phase-4 device (~/.claude-state, no state.conf) restores
+#      plain copies and leaves the store
+#  R5. a re-run of --state keeps the STATE_DIR / STATE_TOOLS / STATE_REMOTE already
+#      in state.conf (non-interactive, and interactive with Enter everywhere)
 #
 # Run: tests/test_setup_state.sh   (exit 0 = pass, non-zero = fail)
 set -euo pipefail
@@ -145,6 +151,25 @@ check "first push happened"                                bash -c "git -C '$wor
 check "agent-memory linked into the custom store"          links_to "$H3/.claude/agent-memory" "$H3/custom/claude/agent-memory"
 check "goose present but excluded by --state-tools: not linked" test ! -L "$H3/.config/goose/memory"
 
+echo "── review 5: a re-run honours the existing state.conf ──"
+# Running ./setup.sh --state again (a new device setup, an upgrade) must start from the
+# values already in state.conf, not from the built-in defaults: H3 keeps its custom
+# store and its tool list, and no second store appears at ~/.agent-state.
+rc=0; setup "$H3" --state </dev/null >"$workdir/h3-rerun.out" 2>&1 || rc=$?
+check "non-interactive re-run exits 0"                     test "$rc" -eq 0
+check "re-run keeps STATE_DIR from the file"               conf_is "$H3" "\$STATE_DIR == '$H3/custom'"
+check "re-run keeps STATE_TOOLS from the file"             conf_is "$H3" "\$STATE_TOOLS == claude"
+check "re-run keeps STATE_REMOTE from the file"            conf_is "$H3" "\$STATE_REMOTE == '$workdir/remote.git'"
+check "re-run creates no ~/.agent-state"                   test ! -e "$H3/.agent-state"
+check "re-run: CLAUDE.md still links into the custom store" links_to "$H3/.claude/CLAUDE.md" "$H3/custom/INSTRUCTIONS.md"
+check "re-run: goose still excluded"                       test ! -L "$H3/.config/goose/memory"
+rc=0; printf '\n\n\n\n\n\n' | setup "$H3" AGENT_RECIPES_ASSUME_TTY=1 --state >"$workdir/h3-rerun2.out" 2>&1 || rc=$?
+check "interactive re-run (Enter everywhere) exits 0"      test "$rc" -eq 0
+check "interactive re-run keeps STATE_DIR"                 conf_is "$H3" "\$STATE_DIR == '$H3/custom'"
+check "interactive re-run keeps STATE_TOOLS"               conf_is "$H3" "\$STATE_TOOLS == claude"
+check "interactive re-run creates no ~/.agent-state"       test ! -e "$H3/.agent-state"
+check "interactive re-run: links still point into the custom store" links_to "$H3/.claude/agent-memory" "$H3/custom/claude/agent-memory"
+
 echo "── interactive: answers from stdin (AGENT_RECIPES_ASSUME_TTY=1) ──"
 # Detected here: goose and hermes. Answers: dir, remote (empty), goose=y, hermes=n, auto=n.
 H4="$(newhome h4)"; mkdir -p "$H4/.config/goose" "$H4/.hermes/memories"
@@ -211,6 +236,36 @@ H9="$(newhome h9)"
 rc=0; setup "$H9" --uninstall </dev/null >"$workdir/h9.out" 2>&1 || rc=$?
 check "uninstall with no state at all exits 0"             test "$rc" -eq 0
 check "...and touched nothing"                             bash -c "[[ -f '$H9/.claude/CLAUDE.md' && ! -L '$H9/.claude/CLAUDE.md' && ! -e '$H9/.agent-state' ]]"
+
+echo "── review 1: a '~/store' answer becomes an absolute STATE_DIR ──"
+# No tool detected here, so the prompts are: dir, remote, auto memory.
+H10="$(newhome h10)"
+tilde='~'   # the answer is the literal, unexpanded "~/store" — exactly what a user types at the prompt
+rc=0; printf '%s\n' "$tilde/store" '' '' | setup "$H10" AGENT_RECIPES_ASSUME_TTY=1 --state >"$workdir/h10.out" 2>&1 || rc=$?
+check "exits 0"                                            test "$rc" -eq 0
+check "STATE_DIR is \$HOME/store (tilde expanded)"         conf_is "$H10" "\$STATE_DIR == '$H10/store'"
+check "the store was created there"                        test -d "$H10/store/.git"
+check "no directory literally named '~' was created"       test ! -e "$workdir/cwd/~"
+check "the CLAUDE.md link target is absolute"              bash -c "[[ \$(readlink '$H10/.claude/CLAUDE.md') == /* ]]"
+check "...and resolves"                                    grep -q 'My rules' "$H10/.claude/CLAUDE.md"
+
+echo "── review 2: --uninstall on a phase-4 device with no state.conf ──"
+# ~/.claude-state (old layout) with links into it and no state.conf: uninstall must
+# still restore plain copies, and leave the store alone.
+H11="$workdir/h11"; mkdir -p "$H11/.claude" "$H11/.claude-state/agent-memory/a"
+printf 'legacy memory\n' > "$H11/.claude-state/agent-memory/a/MEMORY.md"
+printf 'Legacy rules.\n'  > "$H11/.claude-state/CLAUDE.md"
+git -C "$H11/.claude-state" init -q
+git -C "$H11/.claude-state" add -A
+git -C "$H11/.claude-state" -c user.name=t -c user.email=t@t commit -q -m "phase 4 state"
+ln -s "$H11/.claude-state/agent-memory" "$H11/.claude/agent-memory"
+ln -s "$H11/.claude-state/CLAUDE.md"    "$H11/.claude/CLAUDE.md"
+rc=0; setup "$H11" --uninstall </dev/null >"$workdir/h11.out" 2>&1 || rc=$?
+check "uninstall on a legacy device exits 0"               test "$rc" -eq 0
+check "CLAUDE.md is a plain file with its text"            bash -c "[[ -f '$H11/.claude/CLAUDE.md' && ! -L '$H11/.claude/CLAUDE.md' ]] && grep -q 'Legacy rules' '$H11/.claude/CLAUDE.md'"
+check "agent-memory is a plain dir with its content"       bash -c "[[ -d '$H11/.claude/agent-memory' && ! -L '$H11/.claude/agent-memory' ]] && grep -q 'legacy memory' '$H11/.claude/agent-memory/a/MEMORY.md'"
+check "the legacy store is left in place"                  test -d "$H11/.claude-state/.git"
+check "no ~/.agent-state was created"                      test ! -e "$H11/.agent-state"
 
 echo "── nothing reached the (redirected) real home ──"
 check "the test's HOME stayed empty"                       test -z "$(ls -A "$HOME" 2>/dev/null)"
