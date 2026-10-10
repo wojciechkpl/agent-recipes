@@ -94,7 +94,7 @@ dev() {
     local pre=()
     while [[ $# -gt 0 && "$1" == *=* ]]; do pre+=("$1"); shift; done
     HOME="$home" STATE_SYNC_FOREGROUND=1 GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 PATH="$CLEAN_PATH" \
-        /usr/bin/env -u CLAUDE_CONFIG_DIR -u STATE_SYNC_DIR -u GOOSE_CONFIG_DIR -u HERMES_HOME -u CODEX_HOME \
+        /usr/bin/env -u CLAUDE_CONFIG_DIR -u XDG_CONFIG_HOME -u STATE_SYNC_DIR -u GOOSE_CONFIG_DIR -u HERMES_HOME -u CODEX_HOME \
         ${pre[@]+"${pre[@]}"} "$SYNC" "$@"
 }
 # on <home> <args...> — the phase-4 devices: their store is pinned to <home>/.claude-state
