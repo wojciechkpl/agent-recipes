@@ -115,8 +115,17 @@ hold_back_secrets() {
     return "$held"
 }
 
+# A box with no git identity (CI runners, a fresh machine) must still be able to
+# commit — checked before every commit, not only at init: a phase-4 store that is
+# used as it is never went through init's setup.
+ensure_identity() {
+    g config user.name  >/dev/null 2>&1 || g config user.name  "state-sync"
+    g config user.email >/dev/null 2>&1 || g config user.email "state-sync@$(hostname)"
+}
+
 commit_local() {
     local msg="${1:-sync($(hostname -s 2>/dev/null || hostname)): $(date -u +%Y-%m-%dT%H:%M:%SZ)}"
+    ensure_identity
     g add -A
     hold_back_secrets || true
     if ! g diff --cached --quiet; then
@@ -215,9 +224,7 @@ write_repo_files() {
     grep -qsx '\*\.md merge=union'  "$attrs" || echo '*.md merge=union'  >> "$attrs"
     grep -qsx '\*\.txt merge=union' "$attrs" || echo '*.txt merge=union' >> "$attrs"
     [[ -f "$SYNC_DIR/.gitignore" ]] || printf '.sync.log\n' > "$SYNC_DIR/.gitignore"
-    # A box with no global git identity must still be able to commit.
-    g config user.name  >/dev/null 2>&1 || g config user.name  "state-sync"
-    g config user.email >/dev/null 2>&1 || g config user.email "state-sync@$(hostname)"
+    ensure_identity
 }
 
 # A phase-4 store at ~/.claude-state moves to the configured location when that does
