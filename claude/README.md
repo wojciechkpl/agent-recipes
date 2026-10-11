@@ -227,7 +227,8 @@ Both are off until configured. Options (`/plugin configure agent-recipes@agent-r
 `guard_mode`, `notify_enabled`, `notify_recipient`, `notify_signal_rpc_url`,
 `notify_min_seconds`, `notify_include_summary`, `notify_allow_remote`,
 `notify_signal_account`. Full setup, the security model and troubleshooting:
-[`../docs/TUTORIAL-notifications-sync.md`](../docs/TUTORIAL-notifications-sync.md).
+[`../docs/TUTORIAL-notifications-sync.md`](../docs/TUTORIAL-notifications-sync.md); the
+state store step by step: [`../docs/TUTORIAL-state-store.md`](../docs/TUTORIAL-state-store.md).
 
 ## Conventions
 

@@ -325,6 +325,9 @@ daemon has no password, so do this only on a network you fully control.
 
 ## 4. Sync across devices — and across tools
 
+> The long form of this section, with every command and its output, is
+> [TUTORIAL-state-store.md](TUTORIAL-state-store.md).
+
 Agent memory and your instruction files live in one **state store**: a private git
 repository (default `~/.agent-state`) that every device pulls when a session starts and
 pushes when it ends. It holds the memory of every tool you use, each in its own folder,

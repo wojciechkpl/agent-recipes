@@ -2,6 +2,8 @@
 
 > Guard, Signal notifications, cross-device sync, Remote Control and Hermes:
 > [TUTORIAL-notifications-sync.md](TUTORIAL-notifications-sync.md).
+> The state store step by step (memory and instructions for every tool, on every
+> machine): [TUTORIAL-state-store.md](TUTORIAL-state-store.md).
 
 Ten step-by-step walkthroughs for the agents in this repo, each showing the
 **Goose** command and the **Claude Code** prompt side by side.

@@ -642,8 +642,8 @@ memories; Codex's `AGENTS.md`. Each tool's instruction file is a link to one sha
 write. `./setup.sh --state` asks where the store lives and which remote syncs it (or none:
 this machine only, with history); a session start pulls, a session end pushes; Markdown
 and Goose categories merge line-wise; files that look like secrets are never committed.
-Settings, credentials and transcripts are never synced. Setup in
-**[docs/TUTORIAL-notifications-sync.md §4](docs/TUTORIAL-notifications-sync.md#4-sync-across-devices--and-across-tools)**.
+Settings, credentials and transcripts are never synced. Step by step:
+**[docs/TUTORIAL-state-store.md](docs/TUTORIAL-state-store.md)**.
 
 ---
 
@@ -655,7 +655,10 @@ chaining agents, and Goose multi-step missions — live in
 **[docs/TUTORIAL.md](docs/TUTORIAL.md)**, each with the Goose command and the
 Claude Code prompt side by side. The guard, Signal notifications, cross-device sync,
 Remote Control from a phone and using the skills from Hermes are in
-**[docs/TUTORIAL-notifications-sync.md](docs/TUTORIAL-notifications-sync.md)**.
+**[docs/TUTORIAL-notifications-sync.md](docs/TUTORIAL-notifications-sync.md)**; the
+step-by-step walkthrough of the state store — one memory store for Claude Code, Goose,
+Hermes and Codex on every machine — is
+**[docs/TUTORIAL-state-store.md](docs/TUTORIAL-state-store.md)**.
 
 ---
 
