@@ -220,7 +220,7 @@ troubleshooting.
 
 | Command | Does |
 |---------|------|
-| `/notify-test` | Sends a test Signal message through the local signal-cli daemon with your current options; reports `OK  sent` or `FAIL <why>` |
+| `/notify-test` | Sends a test Signal message through the local signal-cli daemon with your current options; reports `OK  sent` or `FAIL <why>`. First-time setup from a terminal: `claude/scripts/signal-setup.sh --account +BOT --recipient +YOU` (install, identity, daemon, options, test) |
 | `/sync-state init [git-url]` · `status` · `pull` · `push` · `off` · `config …` | Keeps agent memory and instructions for Claude Code, Goose, Hermes and Codex in one private git repo (`~/.agent-state`, chosen by `setup.sh --state`) that every device pulls at session start and pushes at session end; one shared `INSTRUCTIONS.md` for all tools |
 
 Both are off until configured. Options (`/plugin configure agent-recipes@agent-recipes`):

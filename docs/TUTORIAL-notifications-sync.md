@@ -122,6 +122,22 @@ under its own OS user.
 You run a small local service, **signal-cli**, that can send Signal messages. The plugin
 calls it when a session needs you.
 
+> **Fast path.** One script does 3.2 to 3.7 for you — install, identity, a message by
+> hand, the daemon as a launchd agent or systemd user unit, the plugin options, and a
+> test through the plugin. From a clone of this repo:
+>
+> ```bash
+> claude/scripts/signal-setup.sh --account +48BOTNUMBER --recipient +48YOURNUMBER   # path A
+> claude/scripts/signal-setup.sh --mode link --account +48YOURNUMBER                 # path B
+> ```
+>
+> It asks for the SMS verification code on path A, prints the QR code on path B, never
+> uses `sudo`, and ends with "restart Claude Code". `--dry-run` shows every command
+> first; `--status` reports what is installed, registered, running and configured;
+> `--uninstall` stops the daemon and turns notifications off. Read 3.1 first — the
+> choice of a dedicated number versus linking your own account is the one decision the
+> script cannot make for you.
+
 ### 3.1 Choose how signal-cli gets a Signal identity
 
 | | **A — dedicated number** (recommended) | **B — link to your own account** |

@@ -627,7 +627,9 @@ Optional: a **Signal message on your phone** when Claude Code is waiting for you
 in interactive sessions and in headless `claude -p` runs alike. The plugin sends one
 JSON-RPC call to a local **signal-cli** daemon; nothing leaves Signal's end-to-end
 encryption, nothing is sent until you set `notify_enabled`, and the assistant's text is
-never included unless you opt in. Test with `/notify-test`. Setup in
+never included unless you opt in. Test with `/notify-test`. One script does the whole
+setup — `claude/scripts/signal-setup.sh --account +BOT --recipient +YOU` (or
+`--mode link`) — details in
 **[docs/TUTORIAL-notifications-sync.md §3](docs/TUTORIAL-notifications-sync.md#3-signal-notifications)**.
 
 ---
